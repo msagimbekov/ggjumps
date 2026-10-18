@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.translation
+
+# Throwaway preview scenes / recordings
+_preview/
+
+# Builds and signing material (never commit keys)
+build/
+android/build/
+android/.build_version
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+export_credentials.cfg
