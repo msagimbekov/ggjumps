@@ -13,6 +13,9 @@ const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
 const GRASS_DECEL := 3200.0
 const LEVEL_SEED := 99
+## Landing line + reticle while dragging. A test aid: switch off for production builds so
+## players have to judge the jump by feel.
+const SHOW_AIM_LINE := true
 
 enum State { AIM, FLY, SLIDE, FALL, OVER, WON }
 
@@ -211,8 +214,9 @@ func _process(delta: float) -> void:
 			if _fall_t >= 1.0:
 				_after_fall()
 
+	_bubble.on_land = _land_at(_bubble.position) != null
 	_bubble.pull = _drag if _dragging else Vector2.ZERO
-	_fx.aiming = _dragging and _drag.length() >= MIN_DRAG
+	_fx.aiming = SHOW_AIM_LINE and _dragging and _drag.length() >= MIN_DRAG
 	if _fx.aiming:
 		_fx.aim_from = _bubble.position
 		_fx.aim_to = _bubble.position - _drag.normalized() * (_drag.length() / MAX_DRAG) * MAX_RANGE

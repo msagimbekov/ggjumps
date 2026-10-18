@@ -5,11 +5,14 @@ extends Node2D
 const R := 16.0
 const PULL_REF := 160.0
 const POINTS := 28
+const REFLECTION_LAYERS := 6
 
 var height := 0.0  # 0 on the ground, up to 1 at the top of a jump
 var pull := Vector2.ZERO  # drag vector while aiming (bubble to pointer)
 var sink := 0.0  # 0..1 while falling into the water
 var squash := 0.0  # landing squash, tweened back to 0
+var on_land := true  # set by main.gd: is there land under the bubble
+var ground := 1.0  # on_land eased, so shadow and reflection cross-fade at island edges
 var _t := 0.0
 
 
@@ -28,6 +31,7 @@ func reset() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	ground = move_toward(ground, 1.0 if on_land else 0.0, delta * 8.0)
 	queue_redraw()
 
 
@@ -35,9 +39,23 @@ func _draw() -> void:
 	var al := 1.0 - sink
 	var sc := (1.0 + height * 0.4) * (1.0 - sink * 0.6)
 
-	# Shadow stays on the ground and shrinks/fades as the bubble rises.
-	draw_set_transform(Vector2(0, 5 + height * 34), 0.0, Vector2(1.0, 0.6) * (1.0 - height * 0.25))
-	draw_circle(Vector2.ZERO, R * 0.95, Color(0, 0, 0, 0.28 * al))
+	var below := Vector2(0, 5 + height * 34)
+	# Shadow only falls on land and shrinks/fades as the bubble rises.
+	if ground > 0.01:
+		draw_set_transform(below, 0.0, Vector2(1.0, 0.6) * (1.0 - height * 0.25))
+		draw_circle(Vector2.ZERO, R * 0.95, Color(0, 0, 0, 0.28 * al * ground))
+	# Over water it is a reflection instead: the higher the bubble, the smaller, fainter and
+	# blurrier (soft edge built from stacked discs); near the surface it is almost bubble-sized.
+	var water := 1.0 - ground
+	if water > 0.01:
+		var rs := lerpf(1.0, 0.5, height)
+		var blur := height * 0.9 + 0.12
+		var base := lerpf(0.55, 0.12, height) * al * water
+		draw_set_transform(below, 0.0, Vector2(1.0, 0.85))
+		for k in REFLECTION_LAYERS:
+			var u := float(k) / (REFLECTION_LAYERS - 1)
+			var rr := R * rs * (1.0 + blur * (1.0 - u))
+			draw_circle(Vector2.ZERO, rr, Color(0.55, 0.9, 1.0, base / REFLECTION_LAYERS * 1.8))
 
 	var offset := Vector2(0, -height * 46) + pull * 0.18
 	var angle := 0.0
