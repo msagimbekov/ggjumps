@@ -26,7 +26,9 @@ var lands: Array[Land] = []
 var cur := 0  # land the bubble last settled on
 var best := 0  # highest land reached = jumps made
 var lives := START_LIVES
-var debug_aim := false  # landing line + reticle, toggled by tapping the lives icons
+var debug_aim := false  # landing line + reticle (tools panel button)
+var keep_lives := false  # tools panel button: falling costs no life
+var show_tools := false  # tools panel, toggled by tapping the lives icons
 
 var _cam: Camera2D
 var _fx: Fx
@@ -139,7 +141,7 @@ func _build_level() -> void:
 				kind = Land.Kind.GRASS
 			var thin := kind in [Land.Kind.GRASS, Land.Kind.ICE] and i >= 6 and thin_roll < lerpf(0.05, 0.45, t)
 			if kind == Land.Kind.TREADMILL:
-				rot = (rot / PI - 0.5) * 0.7  # slight tilt
+				rot = 0.0  # treadmills always run straight up / down
 			if l:
 				l.free()
 			l = _make_land(i, kind, prev.position, radius, 0.55 if thin else 1.0, rot, belt_sign)
@@ -343,6 +345,10 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			if state == State.OVER or state == State.WON:
 				_restart()
+			elif show_tools and _hud.radar_rect().has_point(event.position):
+				debug_aim = not debug_aim
+			elif show_tools and _hud.keep_rect().has_point(event.position):
+				keep_lives = not keep_lives
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
@@ -364,14 +370,14 @@ func _update_drag() -> void:
 	_drag = (get_global_mouse_position() - _bubble.position).limit_length(MAX_DRAG)
 
 
-## Five quick taps on the lives icons switch the landing line on or off.
+## Five quick taps on the lives icons show or hide the tools buttons.
 func _tap_lives() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	_aim_taps = _aim_taps + 1 if now - _aim_tap_time < 2.0 else 1
 	_aim_tap_time = now
 	if _aim_taps >= AIM_TAPS:
 		_aim_taps = 0
-		debug_aim = not debug_aim
+		show_tools = not show_tools
 
 
 func _jump(v: Vector2) -> void:
@@ -450,6 +456,7 @@ func _process(delta: float) -> void:
 	elif state == State.WON:
 		title = "All %d jumps!" % TOTAL_JUMPS
 		sub = "Tap to play again"
+	_hud.set_tools(show_tools, debug_aim, keep_lives)
 	_hud.set_info(best, lives, title, sub)
 
 
@@ -493,7 +500,8 @@ func _settle(l: Land) -> void:
 
 
 func _start_fall() -> void:
-	lives -= 1
+	if not keep_lives:
+		lives -= 1
 	_fall_t = 0.0
 	_fx.splash(_bubble.position, 1.0, 0.45)
 	state = State.FALL

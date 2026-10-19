@@ -14,6 +14,10 @@ var title := ""
 var subtitle := ""
 var top_inset := 0.0  # notch / status bar, in viewport units
 
+var tools := false
+var radar := false
+var keep := false
+
 var _bold: FontVariation
 var _medium: FontVariation
 var _pill := StyleBoxFlat.new()
@@ -37,6 +41,26 @@ func _weight(w: int) -> FontVariation:
 	f.base_font = FONT
 	f.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): w}
 	return f
+
+
+func set_tools(show: bool, radar_on: bool, keep_on: bool) -> void:
+	if show == tools and radar_on == radar and keep_on == keep:
+		return
+	tools = show
+	radar = radar_on
+	keep = keep_on
+	queue_redraw()
+
+
+## Tools buttons: two stacked under the lives pill.
+func radar_rect() -> Rect2:
+	var lp := lives_rect()
+	return Rect2(lp.position.x - 40.0, lp.end.y + 10.0, lp.size.x + 40.0, 44.0)
+
+
+func keep_rect() -> Rect2:
+	var r := radar_rect()
+	return Rect2(r.position.x, r.end.y + 10.0, r.size.x, r.size.y)
 
 
 func set_info(b: int, l: int, t: String, s: String) -> void:
@@ -85,6 +109,10 @@ func _draw() -> void:
 		else:
 			draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1, 0.3), 2.5)
 
+	if tools:
+		_button(radar_rect(), "Radar", radar)
+		_button(keep_rect(), "Keep lives", keep)
+
 	# Progress: thin track with a bubble riding the fill.
 	var bar := Rect2(18, top + 66.0, size.x - 36.0, 8.0)
 	draw_rect(bar, Color(0, 0.1, 0.2, 0.35))
@@ -102,6 +130,15 @@ func _draw() -> void:
 		_text_c(_bold, card.position.y + 105.0, title, 64, Color.WHITE)
 		_text_c(_medium, card.position.y + 160.0, "%d / %d jumps" % [best, total], 28, Color(0.72, 0.92, 1.0))
 		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
+
+
+func _button(r: Rect2, label: String, on: bool) -> void:
+	var sb := _pill.duplicate() as StyleBoxFlat
+	sb.set_corner_radius_all(22)
+	if on:
+		sb.bg_color = Color(0.20, 0.62, 0.32, 0.85)
+	draw_style_box(sb, r)
+	draw_string(_medium, Vector2(r.position.x, r.position.y + 30.0), "%s: %s" % [label, "ON" if on else "OFF"], HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 20, Color.WHITE)
 
 
 func _text(font: Font, pos: Vector2, s: String, fs: int, col: Color) -> void:

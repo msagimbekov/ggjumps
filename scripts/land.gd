@@ -7,6 +7,7 @@ enum Kind { GRASS, ICE, TREADMILL, MOVING }
 
 const OUTLINE_POINTS := 32
 const BELT_SPEED := 35.0
+const BELT_HALF := Vector2(56.0, 90.0)  # every treadmill is this size, always vertical
 const SWAY_SPEED := 0.9  # rad/s
 const SWAY_AMP := 64.0
 
@@ -48,7 +49,7 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 	if kind == Kind.TREADMILL:
 		_belt_sign = belt_sign
 		_belt = Vector2.UP.rotated(rot) * belt_sign
-		_half = Vector2(clampf(radius * 0.8, 44.0, 66.0), clampf(radius * 1.35, 70.0, 105.0))
+		_half = BELT_HALF
 		var corners := [Vector2(-_half.x, -_half.y), Vector2(_half.x, -_half.y), Vector2(_half.x, _half.y), Vector2(-_half.x, _half.y)]
 		for c in 4:
 			var a: Vector2 = corners[c]
@@ -81,8 +82,8 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 			_fill_color = Color(0.70, 0.89, 0.98)
 			_deco_color = Color(1, 1, 1, 0.75)
 		Kind.TREADMILL:
-			_rim_color = Color(0.25, 0.27, 0.32)
-			_fill_color = Color(0.16, 0.18, 0.22)
+			_rim_color = Color(0.55, 0.36, 0.20)
+			_fill_color = Color(0.36, 0.66, 0.32)
 		Kind.MOVING:
 			_rim_color = Color(0.55, 0.36, 0.20)
 			_fill_color = Color(0.86, 0.68, 0.42)
@@ -178,9 +179,6 @@ func _draw_belt() -> void:
 	draw_set_transform(Vector2.ZERO, _rot, Vector2.ONE)
 	var hw := _half.x
 	var hl := _half.y
-	var rail := Color(0.50, 0.53, 0.60)
-	draw_line(Vector2(-hw + 8, -hl + 6), Vector2(-hw + 8, hl - 6), rail, 3.0)
-	draw_line(Vector2(hw - 8, -hl + 6), Vector2(hw - 8, hl - 6), rail, 3.0)
 	var dir := Vector2(0, -_belt_sign)
 	var back := -dir
 	var step := 34.0
@@ -192,9 +190,9 @@ func _draw_belt() -> void:
 		if a <= 0.0:
 			continue
 		var c := Vector2(0, y)
-		var w := hw * 0.5
+		var w := hw - 14.0
 		var pts := PackedVector2Array([c + Vector2(-w, 0) + back * 11.0, c, c + Vector2(w, 0) + back * 11.0])
-		draw_polyline(pts, Color(1.0, 0.82, 0.25, 0.9 * a), 4.0, true)
+		draw_polyline(pts, Color(1.0, 0.82, 0.25, 0.9 * a), 7.0, true)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -202,8 +200,3 @@ func _draw_sway() -> void:
 	var n := _inner.size()
 	for i in range(0, n, 2):
 		draw_line(_inner[i] * 0.93, _inner[(i + 1) % n] * 0.93, _deco_color, 3.0)
-	var s := clampf(radius_max * 0.35, 12.0, 24.0)
-	var col := Color(1, 1, 1, 0.75 + 0.2 * sin(_t * 3.0))
-	draw_line(Vector2(-s, 0), Vector2(s, 0), col, 4.0)
-	draw_polyline(PackedVector2Array([Vector2(-s + 10, -10), Vector2(-s, 0), Vector2(-s + 10, 10)]), col, 4.0)
-	draw_polyline(PackedVector2Array([Vector2(s - 10, -10), Vector2(s, 0), Vector2(s - 10, 10)]), col, 4.0)
