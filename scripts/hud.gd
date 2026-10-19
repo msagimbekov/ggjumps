@@ -92,10 +92,9 @@ func set_pickups(d: int, radar: float, merging: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if _drop_pulse > 0.0 or _life_flash > 0.0:
-		_drop_pulse = maxf(_drop_pulse - delta, 0.0)
-		_life_flash = maxf(_life_flash - delta, 0.0)
-		queue_redraw()
+	_drop_pulse = maxf(_drop_pulse - delta, 0.0)
+	_life_flash = maxf(_life_flash - delta, 0.0)
+	queue_redraw()  # the collected drops wobble
 
 
 func set_info(b: int, l: int, t: String, s: String) -> void:
@@ -162,12 +161,12 @@ func _draw() -> void:
 		var at := Vector2(slots.position.x + 22.0 + i * 36.0, slots.get_center().y)
 		if merge > 0.0 and drops >= DROPS_SLOTS:
 			var e := 1.0 - pow(1.0 - merge, 2.0)
-			Pickup.draw_bubble(self, at.lerp(mid, e), lerpf(10.0, 18.0, e), 1.0, 1.0)
+			Pickup.draw_bubble(self, at.lerp(mid, e), lerpf(10.0, 18.0, e), 1.0, 1.0, i * 1.7)
 			continue
 		var pulse := 1.0
 		if i == drops - 1 and _drop_pulse > 0.0:
 			pulse = 1.0 + 0.3 * sin(PI * _drop_pulse / 0.5)
-		Pickup.draw_bubble(self, at, 10.0 * pulse, 1.0 if i < drops else 0.0, 1.0)
+		Pickup.draw_bubble(self, at, 10.0 * pulse, 1.0 if i < drops else 0.0, 1.0, i * 1.7)
 	if radar_left > 0.0:
 		var rp := Rect2(slots.end.x + 10.0, slots.position.y, 44.0, 44.0)
 		draw_style_box(_pill, rp)

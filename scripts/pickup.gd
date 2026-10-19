@@ -16,6 +16,7 @@ var kind := Kind.LIFE
 var state := State.IDLE
 
 var _t := randf() * 10.0
+var _phase := randf() * TAU
 var _anim := 0.0
 var _text := ""
 var _bits: Array[Dictionary] = []
@@ -88,14 +89,14 @@ func _draw() -> void:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			var glow := 0.14 + 0.08 * sin(_t * 3.0)
 			draw_circle(Vector2(0, bob), 26.0, Color(tone.r, tone.g, tone.b, glow))
-			draw_box(self, Vector2(0, bob - 4.0), 1.0, kind, 1.0, 1.0, _t * 2.5)
+			draw_box(self, Vector2(0, bob - 4.0), 1.0, kind, 1.0, 1.0, _t * 2.5, _phase)
 		State.COLLECTED:
 			var u := clampf(_anim / COLLECT_TIME, 0.0, 1.0)
 			var rise := 1.0 - pow(1.0 - u, 3.0)
 			var pop := 1.0 + 0.5 * sin(PI * minf(u * 1.6, 1.0))
 			var fade := 1.0 - smoothstep(0.6, 1.0, u)
 			draw_arc(Vector2.ZERO, 14.0 + 52.0 * rise, 0.0, TAU, 32, Color(tone.r, tone.g, tone.b, 0.8 * (1.0 - u)), 4.0 * (1.0 - u) + 1.0)
-			draw_box(self, Vector2(0, bob - 4.0 - 36.0 * rise), pop, kind, 1.0, fade, _t * 2.5)
+			draw_box(self, Vector2(0, bob - 4.0 - 36.0 * rise), pop, kind, 1.0, fade, _t * 2.5, _phase)
 			if _text != "":
 				var pos := Vector2(-60, -54.0 - 26.0 * rise)
 				draw_string(_font, pos + Vector2(0, 2), _text, HORIZONTAL_ALIGNMENT_CENTER, 120, 22, Color(0, 0.08, 0.16, 0.6 * fade))
@@ -122,25 +123,38 @@ static func radar_alpha(left: float) -> float:
 
 ## One pickup, centred on `pos`. LIFE: a small bubble (half the player's size); `fill` 0 is a
 ## faint empty outline (HUD slot), 1 the full bubble. RADAR: the gold radar lens.
-static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: float, alpha: float, sweep := 0.0) -> void:
+static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: float, alpha: float, sweep := 0.0, phase := 0.0) -> void:
 	if s <= 0.01 or alpha <= 0.0:
 		return
 	if k == Kind.RADAR:
 		draw_lens(ci, pos, s, alpha * fill, sweep)
 	else:
-		draw_bubble(ci, pos, 11.0 * s, fill, alpha)
+		draw_bubble(ci, pos, 11.0 * s, fill, alpha, phase)
 
 
-## A small copy of the player's bubble (same colours); `fill` 0 is just a faint outline.
-static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float) -> void:
+## A small liquid drop in the player's colours: a wobbling, gently squashing blob, never a
+## perfect circle. `fill` 0 is just a faint outline. `phase` keeps neighbours out of step.
+static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0) -> void:
+	var t := Time.get_ticks_msec() * 0.001 + phase
+	var squash := 0.07 * sin(t * 2.3)
+	var pts := PackedVector2Array()
+	for n in 24:
+		var a := TAU * n / 24.0
+		var rr := r * (1.0 + 0.09 * sin(a * 2.0 + t * 3.1) + 0.06 * sin(a * 3.0 - t * 2.4) + 0.035 * sin(a * 5.0 + t * 4.2))
+		pts.append(pos + Vector2(cos(a) * rr * (1.0 + squash), sin(a) * rr * (1.0 - squash)))
 	var line := Color(1, 1, 1, 0.5).lerp(Color(0.10, 0.50, 0.80), fill)
 	line.a *= alpha
 	if fill > 0.0:
-		ci.draw_circle(pos, r, Color(0.30, 0.80, 1.0, 0.95 * fill * alpha))
-		ci.draw_circle(pos + Vector2(-0.12, -0.18) * r, r * 0.7, Color(0.62, 0.95, 1.0, 0.5 * fill * alpha))
-		ci.draw_circle(pos + Vector2(-0.32, -0.36) * r, r * 0.25, Color(1, 1, 1, 0.85 * fill * alpha))
-		ci.draw_circle(pos + Vector2(0.22, 0.38) * r, r * 0.11, Color(1, 1, 1, 0.5 * fill * alpha))
-	ci.draw_arc(pos, r, 0.0, TAU, 24, line, maxf(r * 0.09, 1.2), true)
+		ci.draw_colored_polygon(pts, Color(0.30, 0.80, 1.0, 0.95 * fill * alpha))
+		var core := PackedVector2Array()
+		for q in pts:
+			core.append(pos + (q - pos) * 0.68 + Vector2(-0.1, -0.16) * r)
+		ci.draw_colored_polygon(core, Color(0.62, 0.95, 1.0, 0.5 * fill * alpha))
+		ci.draw_circle(pos + Vector2(-0.33, -0.36) * r, r * 0.22, Color(1, 1, 1, 0.85 * fill * alpha))
+		ci.draw_circle(pos + Vector2(0.24, 0.4) * r, r * 0.1, Color(1, 1, 1, 0.5 * fill * alpha))
+	var loop := PackedVector2Array(pts)
+	loop.append(pts[0])
+	ci.draw_polyline(loop, line, maxf(r * 0.09, 1.2), true)
 
 
 ## The radar lens: ring, four ticks, centre dot and a sweeping wedge.
