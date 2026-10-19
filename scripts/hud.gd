@@ -1,6 +1,10 @@
 class_name Hud
 extends Control
-## Jump counter, lives and the end-of-run overlay. Redraws only when something changed.
+## Jump counter, lives, progress and the end-of-run card. Redraws only when something changed.
+
+const FONT := preload("res://fonts/Fredoka.ttf")
+const INK := Color(0.02, 0.12, 0.22, 0.55)
+const GLASS := Color(0.02, 0.14, 0.26, 0.42)
 
 var best := 0
 var total := 99
@@ -9,6 +13,30 @@ var max_lives := 3
 var title := ""
 var subtitle := ""
 var top_inset := 0.0  # notch / status bar, in viewport units
+
+var _bold: FontVariation
+var _medium: FontVariation
+var _pill := StyleBoxFlat.new()
+var _card := StyleBoxFlat.new()
+
+
+func _init() -> void:
+	_bold = _weight(650)
+	_medium = _weight(500)
+	for sb: StyleBoxFlat in [_pill, _card]:
+		sb.bg_color = GLASS
+		sb.set_corner_radius_all(26)
+		sb.border_color = Color(1, 1, 1, 0.18)
+		sb.set_border_width_all(2)
+	_card.bg_color = Color(0.02, 0.14, 0.26, 0.78)
+	_card.set_corner_radius_all(36)
+
+
+func _weight(w: int) -> FontVariation:
+	var f := FontVariation.new()
+	f.base_font = FONT
+	f.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): w}
+	return f
 
 
 func set_info(b: int, l: int, t: String, s: String) -> void:
@@ -21,31 +49,66 @@ func set_info(b: int, l: int, t: String, s: String) -> void:
 	queue_redraw()
 
 
+## Tap target around the lives icons (the hidden aim-line switch).
+func lives_rect() -> Rect2:
+	var w := 28.0 + max_lives * 36.0
+	return Rect2(size.x - w - 18.0, top_inset + 18.0, w, 52.0)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		queue_redraw()
 
 
 func _draw() -> void:
-	var font := ThemeDB.fallback_font
-	var top := top_inset + 24.0
-	_text(font, Vector2(24, top + 28), "%d / %d" % [best, total], 36, HORIZONTAL_ALIGNMENT_LEFT, size.x)
+	var top := top_inset + 18.0
+
+	# Score pill: big jump count, muted total.
+	var num := str(best)
+	var num_w := _bold.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
+	var tot := " / %d" % total
+	var tot_w := _medium.get_string_size(tot, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+	var pill := Rect2(18, top, num_w + tot_w + 40.0, 52.0)
+	draw_style_box(_pill, pill)
+	_text(_bold, Vector2(pill.position.x + 20.0, top + 39.0), num, 40, Color.WHITE)
+	_text(_medium, Vector2(pill.position.x + 20.0 + num_w, top + 38.0), tot, 22, Color(1, 1, 1, 0.65))
+
+	# Lives pill: filled bubbles, hollow rings for lost ones.
+	var lp := lives_rect()
+	draw_style_box(_pill, lp)
 	for i in max_lives:
-		var c := Vector2(size.x - 30.0 - i * 34.0, top + 14.0)
+		var c := Vector2(lp.position.x + 32.0 + i * 36.0, lp.position.y + lp.size.y * 0.5)
 		if i < lives:
-			draw_circle(c, 11.0, Color(0.30, 0.80, 1.0))
-			draw_circle(c + Vector2(-3, -3), 3.0, Color(1, 1, 1, 0.85))
+			draw_circle(c, 13.0, Color(0.30, 0.80, 1.0))
+			draw_arc(c, 13.0, 0.0, TAU, 24, Color(0.10, 0.50, 0.80), 2.0)
+			draw_circle(c + Vector2(-4, -4), 3.5, Color(1, 1, 1, 0.9))
 		else:
-			draw_arc(c, 10.0, 0.0, TAU, 24, Color(1, 1, 1, 0.3), 2.0)
-	var bar := Rect2(24, top + 46, size.x - 48, 6)
-	draw_rect(bar, Color(1, 1, 1, 0.25))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * float(best) / total, bar.size.y)), Color(1, 1, 1, 0.9))
+			draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1, 0.3), 2.5)
+
+	# Progress: thin track with a bubble riding the fill.
+	var bar := Rect2(18, top + 66.0, size.x - 36.0, 8.0)
+	draw_rect(bar, Color(0, 0.1, 0.2, 0.35))
+	var fill := bar.size.x * float(best) / total
+	if fill > 0.0:
+		draw_rect(Rect2(bar.position, Vector2(fill, bar.size.y)), Color(1, 1, 1, 0.9))
+	var knob := Vector2(bar.position.x + fill, bar.position.y + bar.size.y * 0.5)
+	draw_circle(knob, 8.0, Color(0.30, 0.80, 1.0))
+	draw_arc(knob, 8.0, 0.0, TAU, 20, Color.WHITE, 2.0)
+
 	if title != "":
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.05, 0.1, 0.55))
-		_text(font, Vector2(0, size.y * 0.42), title, 54, HORIZONTAL_ALIGNMENT_CENTER, size.x)
-		_text(font, Vector2(0, size.y * 0.42 + 56), subtitle, 28, HORIZONTAL_ALIGNMENT_CENTER, size.x)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.05, 0.1, 0.45))
+		var card := Rect2(size.x * 0.5 - 220.0, size.y * 0.5 - 150.0, 440.0, 270.0)
+		draw_style_box(_card, card)
+		_text_c(_bold, card.position.y + 105.0, title, 64, Color.WHITE)
+		_text_c(_medium, card.position.y + 160.0, "%d / %d jumps" % [best, total], 28, Color(0.72, 0.92, 1.0))
+		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
 
 
-func _text(font: Font, pos: Vector2, s: String, fs: int, align: HorizontalAlignment, width: float) -> void:
-	draw_string(font, pos + Vector2(2, 3), s, align, width, fs, Color(0, 0.1, 0.2, 0.5))
-	draw_string(font, pos, s, align, width, fs, Color.WHITE)
+func _text(font: Font, pos: Vector2, s: String, fs: int, col: Color) -> void:
+	draw_string(font, pos + Vector2(0, 2), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, INK)
+	draw_string(font, pos, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+
+
+func _text_c(font: Font, y: float, s: String, fs: int, col: Color) -> void:
+	draw_string(font, Vector2(0, y + 3), s, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, INK)
+	draw_string(font, Vector2(0, y), s, HORIZONTAL_ALIGNMENT_CENTER, size.x, fs, col)

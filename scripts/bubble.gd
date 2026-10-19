@@ -2,7 +2,7 @@ class_name Bubble
 extends Node2D
 ## The player: a small liquid bubble. Purely visual; main.gd moves it and sets height/pull/sink.
 
-const R := 16.0
+const R := 22.0
 const PULL_REF := 160.0
 const POINTS := 28
 const REFLECTION_LAYERS := 6
@@ -39,7 +39,7 @@ func _draw() -> void:
 	var al := 1.0 - sink
 	var sc := (1.0 + height * 0.4) * (1.0 - sink * 0.6)
 
-	var below := Vector2(0, 5 + height * 34)
+	var below := Vector2(0, 7 + height * 34)
 	# Shadow only falls on land and shrinks/fades as the bubble rises.
 	if ground > 0.01:
 		draw_set_transform(below, 0.0, Vector2(1.0, 0.6) * (1.0 - height * 0.25))
@@ -75,11 +75,11 @@ func _draw() -> void:
 		pts.append(Vector2(cos(a), sin(a)) * r)
 	var core := PackedVector2Array()
 	for q in pts:
-		core.append(q * 0.7 + Vector2(-1.5, -2.5))
+		core.append(q * 0.7 + Vector2(-2.0, -3.5))
 	draw_colored_polygon(pts, Color(0.30, 0.80, 1.0, 0.9 * al))
 	draw_colored_polygon(core, Color(0.62, 0.95, 1.0, 0.5 * al))
 	var ring := pts.duplicate()
 	ring.append(pts[0])
 	draw_polyline(ring, Color(0.10, 0.50, 0.80, 0.9 * al), 2.0)
-	draw_circle(Vector2(-5, -6), 4.0, Color(1, 1, 1, 0.85 * al))
-	draw_circle(Vector2(4, 6), 1.8, Color(1, 1, 1, 0.5 * al))
+	draw_circle(Vector2(-7, -8), 5.5, Color(1, 1, 1, 0.85 * al))
+	draw_circle(Vector2(5, 8), 2.4, Color(1, 1, 1, 0.5 * al))
