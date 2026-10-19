@@ -13,6 +13,9 @@ const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
 const GRASS_DECEL := 3200.0
 const LEVEL_SEED := 99
+const LEVEL_ATTEMPTS := 60
+const SOLVE_MIN_WINDOW := 8  # in 1% power steps (~38 px of landing tolerance)
+const SOLVE_MIN_WINDOW_OFFSET := 4
 ## Landing line + reticle while dragging. A test aid: switch off for production builds so
 ## players have to judge the jump by feel.
 const SHOW_AIM_LINE := true
@@ -97,36 +100,118 @@ func _build_level() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = LEVEL_SEED
 	var pos := Vector2(270, 0)
-	var prev_radius := 120.0
-	_add_land(0, Land.Kind.GRASS, pos, 120.0, 1.0, 0.0)
+	_add_land(_make_land(0, Land.Kind.GRASS, pos, 120.0, 1.0, 0.0))
 	for i in range(1, TOTAL_JUMPS + 1):
 		var t := float(i) / TOTAL_JUMPS
-		var gap := rng.randf_range(lerpf(60.0, 130.0, t), lerpf(110.0, 230.0, t))  # water between the edges
-		var ang := -PI / 2.0 + rng.randf_range(-0.7, 0.7)
-		var radius := lerpf(100.0, 48.0, t) * rng.randf_range(0.9, 1.1)
-		var dist := prev_radius + radius + gap
-		var thin_roll := rng.randf()
-		var ice_roll := rng.randf()
-		var rot := rng.randf() * PI
-		var dir := Vector2.from_angle(ang)
-		var next := pos + dir * dist
-		if next.x < 80.0 or next.x > 460.0:
-			dir.x = -dir.x
-			next = pos + dir * dist
-			next.x = clampf(next.x, 80.0, 460.0)
-		var thin := i >= 6 and thin_roll < lerpf(0.05, 0.45, t)
-		var ice := i >= 10 and ice_roll < lerpf(0.1, 0.5, t)
-		_add_land(i, Land.Kind.ICE if ice else Land.Kind.GRASS, next, radius, 0.55 if thin else 1.0, rot)
-		pos = next
-		prev_radius = radius
+		var prev_radius := _land_radius(lands[i - 1])
+		var l: Land = null
+		# Reroll an ice island nobody can stop on; after enough tries fall back to grass.
+		for attempt in LEVEL_ATTEMPTS:
+			var gap := rng.randf_range(lerpf(60.0, 130.0, t), lerpf(110.0, 230.0, t))  # water between the edges
+			var ang := -PI / 2.0 + rng.randf_range(-0.7, 0.7)
+			var radius := lerpf(100.0, 48.0, t) * rng.randf_range(0.9, 1.1)
+			var dist := prev_radius + radius + gap
+			var thin_roll := rng.randf()
+			var ice_roll := rng.randf()
+			var rot := rng.randf() * PI
+			var dir := Vector2.from_angle(ang)
+			var next := pos + dir * dist
+			if next.x < 80.0 or next.x > 460.0:
+				dir.x = -dir.x
+				next = pos + dir * dist
+				next.x = clampf(next.x, 80.0, 460.0)
+			var thin := i >= 6 and thin_roll < lerpf(0.05, 0.45, t)
+			var ice := i >= 10 and ice_roll < lerpf(0.1, 0.5, t)
+			var kind := Land.Kind.ICE if ice else Land.Kind.GRASS
+			if attempt == LEVEL_ATTEMPTS - 1:
+				kind = Land.Kind.GRASS
+			if l:
+				l.free()
+			l = _make_land(i, kind, next, radius, 0.55 if thin else 1.0, rot)
+			if _is_solvable(lands[i - 1], l):
+				break
+		_add_land(l)
+		pos = l.position
 
 
-func _add_land(i: int, kind: Land.Kind, at: Vector2, radius: float, aspect: float, rot: float) -> void:
+func _make_land(i: int, kind: Land.Kind, at: Vector2, radius: float, aspect: float, rot: float) -> Land:
 	var l := Land.new()
 	l.position = at
 	l.setup(i, kind, radius, aspect, rot, LEVEL_SEED * 1000 + i)
+	return l
+
+
+func _add_land(l: Land) -> void:
 	add_child(l)
 	lands.append(l)
+
+
+func _land_radius(l: Land) -> float:
+	var r := 0.0
+	for p in l.poly:
+		r = maxf(r, p.length())
+	return r
+
+
+## Whether a jump from `from` can end up settled on `to`. Tries start spots across the
+## previous island (centre and 55% towards / away from the target), aiming at a few points
+## of the target, and sweeps the power. Needs a window of powers wide enough to hit by hand.
+func _is_solvable(from: Land, to: Land) -> bool:
+	var axis := (to.position - from.position).normalized()
+	var r := _land_radius(from)
+	var starts := [from.position, from.position + axis * r * 0.55, from.position - axis * r * 0.55]
+	for s: Vector2 in starts:
+		if not from.contains_world(s):
+			continue
+		var need := SOLVE_MIN_WINDOW if s == from.position else SOLVE_MIN_WINDOW_OFFSET
+		if _best_window(s, to) < need:
+			return false
+	return true
+
+
+func _best_window(s: Vector2, to: Land) -> int:
+	var r := _land_radius(to)
+	var best_count := 0
+	for off: float in [0.0, -0.4, 0.4]:
+		var side := (to.position - s).normalized().orthogonal()
+		var dir := (to.position + side * off * r - s).normalized()
+		var count := 0
+		var run := 0
+		for k in range(int(MIN_DRAG / MAX_DRAG * 100.0) + 1, 101):
+			if _jump_settles(s, dir, k / 100.0, to):
+				run += 1
+				count = maxi(count, run)
+			else:
+				run = 0
+		best_count = maxi(best_count, count)
+	return best_count
+
+
+## Mirrors _on_landed / SLIDE: does a jump of this power end settled on `to`?
+func _jump_settles(s: Vector2, dir: Vector2, power: float, to: Land) -> bool:
+	var p := s + dir * power * MAX_RANGE
+	if not to.contains_world(p):
+		return false
+	if to.kind != Land.Kind.ICE or power <= 0.12:
+		return true
+	# Constant deceleration: the slide is a straight line that stops below 8 px/s.
+	var speed := power * SLIDE_SPEED
+	var run := maxf(speed * speed - 64.0, 0.0) / (2.0 * ICE_DECEL)
+	for k in range(1, 9):
+		if not to.contains_world(p + dir * run * k / 8.0):
+			return false
+	return true
+
+
+## Debug aid: the widest-run of workable powers for every jump, worst first. Run headless via
+## `godot --headless --script scripts/verify_levels.gd`.
+func verify_levels() -> Array:
+	var rows := []
+	for i in range(1, lands.size()):
+		var s := lands[i - 1].position
+		rows.append([_best_window(s, lands[i]), i, lands[i].kind])
+	rows.sort()
+	return rows
 
 
 func _restart() -> void:

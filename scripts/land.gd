@@ -45,7 +45,8 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 
 
 func contains_world(p: Vector2) -> bool:
-	return Geometry2D.is_point_in_polygon(to_local(p), poly)
+	# Lands are never rotated or scaled, so this also works before the node is in the tree.
+	return Geometry2D.is_point_in_polygon(p - position, poly)
 
 
 func _draw() -> void:
