@@ -21,18 +21,17 @@ var aim_to := Vector2.ZERO
 var _rings: Array[Dictionary] = []
 var _drops: Array[Dictionary] = []
 var _jets: Array[Dictionary] = []
-var _trail: Array[Dictionary] = []
 
 
 func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, squash := 1.0) -> void:
 	_rings.append({"p": p, "t": 0.0, "dur": dur, "r": radius, "col": col, "sq": squash})
 
 
-## One puff of the jump trail; stronger jumps leave bigger, brighter, longer-lasting ones.
-func trail(p: Vector2, power: float, speed: float) -> void:
-	# Lifetime from the speed so the tail is always shorter than the bubble is wide.
-	var length := Bubble.R * (1.5 + 0.9 * power)  # measured from the bubble centre; the first R is hidden under it
-	_trail.append({"p": p, "t": 0.0, "life": length / maxf(speed, 1.0), "r": Bubble.R * (0.6 + 0.3 * power), "a": 0.6 + 0.4 * power})
+## Jump tail: a thin tapered streak behind the bubble (set each frame while flying).
+var tail_on := false
+var tail_pos := Vector2.ZERO
+var tail_dir := Vector2.UP  # direction of travel
+var tail_power := 0.0
 
 
 ## A water splash: rings, a rising jet and a crown of droplets that fly out and fall back.
@@ -56,9 +55,6 @@ func _process(delta: float) -> void:
 	for r in _rings:
 		r.t += delta
 	_rings = _rings.filter(func(r): return r.t < r.dur)
-	for q in _trail:
-		q.t += delta
-	_trail = _trail.filter(func(q): return q.t < q.life)
 	for j in _jets:
 		j.t += delta
 	_jets = _jets.filter(func(j): return j.t < j.dur)
@@ -86,10 +82,8 @@ func _draw() -> void:
 			draw_circle(aim_from + d * u, 3.5, Color(1, 1, 1, 0.85 - 0.45 * u))
 		draw_arc(aim_to, 16.0, 0.0, TAU, 32, Color(1, 1, 1, 0.85), 3.0)
 		draw_circle(aim_to, 3.0, Color(1, 1, 1, 0.9))
-	for q in _trail:
-		var u: float = q.t / q.life
-		draw_circle(q.p, q.r * (1.0 - 0.6 * u), Color(0.45, 0.88, 1.0, q.a * (1.0 - u)))
-		draw_circle(q.p + Vector2(-2, -2), q.r * 0.45 * (1.0 - u), Color(1, 1, 1, q.a * 0.8 * (1.0 - u)))
+	if tail_on:
+		_draw_tail()
 	for r in _rings:
 		var u: float = r.t / r.dur
 		var col: Color = r.col
@@ -105,6 +99,29 @@ func _draw() -> void:
 		draw_circle(d.p, d.r * 0.8, Color(0, 0.1, 0.2, 0.12))
 		draw_line(pos, pos - vel * 0.025, Color(0.85, 0.96, 1.0, 0.7), d.r * 1.3)
 		draw_circle(pos, d.r, Color(0.92, 0.98, 1.0, 0.95))
+
+
+func _draw_tail() -> void:
+	var back := -tail_dir
+	var side := tail_dir.orthogonal()
+	var length := Bubble.R * (1.6 + 1.0 * tail_power)  # from the bubble centre; the first R hides under it
+	var width := Bubble.R * 0.5
+	var left := PackedVector2Array()
+	var right := PackedVector2Array()
+	var cl := PackedColorArray()
+	for s in 9:
+		var u := float(s) / 8.0
+		var w := width * pow(1.0 - u, 1.4)
+		var p := tail_pos + back * length * u
+		left.append(p + side * w)
+		right.append(p - side * w)
+		cl.append(Color(0.6, 0.93, 1.0, (0.65 + 0.35 * tail_power) * (1.0 - u * 0.7)))
+	var pts := PackedVector2Array(left)
+	var cols := PackedColorArray(cl)
+	for s in range(8, -1, -1):
+		pts.append(right[s])
+		cols.append(cl[s])
+	draw_polygon(pts, cols)
 
 
 ## Soft palette taken from the game: sea-foam mint, beach sand, coral.
