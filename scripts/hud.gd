@@ -3,6 +3,7 @@ extends Control
 ## Jump counter, lives, progress and the end-of-run card. Redraws only when something changed.
 
 const FONT := preload("res://fonts/Fredoka.ttf")
+const TOOL_SIZE := 46.0
 const INK := Color(0.02, 0.12, 0.22, 0.55)
 const GLASS := Color(0.02, 0.14, 0.26, 0.42)
 
@@ -17,6 +18,7 @@ var top_inset := 0.0  # notch / status bar, in viewport units
 var tools := false
 var radar := false
 var keep := false
+var ids := false
 
 var _bold: FontVariation
 var _medium: FontVariation
@@ -43,24 +45,32 @@ func _weight(w: int) -> FontVariation:
 	return f
 
 
-func set_tools(show: bool, radar_on: bool, keep_on: bool) -> void:
-	if show == tools and radar_on == radar and keep_on == keep:
+func set_tools(show: bool, radar_on: bool, keep_on: bool, ids_on: bool) -> void:
+	if show == tools and radar_on == radar and keep_on == keep and ids_on == ids:
 		return
 	tools = show
 	radar = radar_on
 	keep = keep_on
+	ids = ids_on
 	queue_redraw()
 
 
-## Tools buttons: two stacked under the lives pill.
+## Small square tool buttons stacked under the lives pill, right-aligned with it.
 func radar_rect() -> Rect2:
-	var lp := lives_rect()
-	return Rect2(lp.position.x - 40.0, lp.end.y + 10.0, lp.size.x + 40.0, 44.0)
+	return _tool_rect(0)
 
 
 func keep_rect() -> Rect2:
-	var r := radar_rect()
-	return Rect2(r.position.x, r.end.y + 10.0, r.size.x, r.size.y)
+	return _tool_rect(1)
+
+
+func ids_rect() -> Rect2:
+	return _tool_rect(2)
+
+
+func _tool_rect(n: int) -> Rect2:
+	var lp := lives_rect()
+	return Rect2(lp.end.x - TOOL_SIZE, lp.end.y + 10.0 + n * (TOOL_SIZE + 8.0), TOOL_SIZE, TOOL_SIZE)
 
 
 func set_info(b: int, l: int, t: String, s: String) -> void:
@@ -110,8 +120,9 @@ func _draw() -> void:
 			draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1, 0.3), 2.5)
 
 	if tools:
-		_button(radar_rect(), "Radar", radar)
-		_button(keep_rect(), "Keep lives", keep)
+		_tool_button(radar_rect(), radar, 0)
+		_tool_button(keep_rect(), keep, 1)
+		_tool_button(ids_rect(), ids, 2)
 
 	# Progress: thin track with a bubble riding the fill.
 	var bar := Rect2(18, top + 66.0, size.x - 36.0, 8.0)
@@ -132,13 +143,28 @@ func _draw() -> void:
 		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
 
 
-func _button(r: Rect2, label: String, on: bool) -> void:
+func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 	var sb := _pill.duplicate() as StyleBoxFlat
-	sb.set_corner_radius_all(22)
+	sb.set_corner_radius_all(14)
 	if on:
 		sb.bg_color = Color(0.20, 0.62, 0.32, 0.85)
 	draw_style_box(sb, r)
-	draw_string(_medium, Vector2(r.position.x, r.position.y + 30.0), "%s: %s" % [label, "ON" if on else "OFF"], HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 20, Color.WHITE)
+	var c := r.get_center()
+	var col := Color.WHITE if on else Color(1, 1, 1, 0.75)
+	match icon:
+		0:  # radar: ring, cross hairs, centre dot
+			draw_arc(c, 11.0, 0.0, TAU, 24, col, 2.5)
+			draw_line(c + Vector2(-16, 0), c + Vector2(-6, 0), col, 2.5)
+			draw_line(c + Vector2(6, 0), c + Vector2(16, 0), col, 2.5)
+			draw_line(c + Vector2(0, -16), c + Vector2(0, -6), col, 2.5)
+			draw_line(c + Vector2(0, 6), c + Vector2(0, 16), col, 2.5)
+			draw_circle(c, 2.5, col)
+		1:  # keep lives: heart
+			draw_circle(c + Vector2(-5.5, -3), 6.0, col)
+			draw_circle(c + Vector2(5.5, -3), 6.0, col)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-11, 0), c + Vector2(11, 0), c + Vector2(0, 13)]), col)
+		2:  # island numbers: hash sign
+			draw_string(_bold, Vector2(r.position.x, c.y + 9.0), "#", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 28, col)
 
 
 func _text(font: Font, pos: Vector2, s: String, fs: int, col: Color) -> void:

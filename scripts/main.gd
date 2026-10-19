@@ -29,6 +29,8 @@ var cur := 0  # land the bubble last settled on
 var best := 0  # highest land reached = jumps made
 var lives := START_LIVES
 var debug_aim := false  # landing line + reticle (tools panel button)
+var show_ids := false  # tools panel button: island numbers on the islands
+var _slide_land: Land
 var keep_lives := false  # tools panel button: falling costs no life
 var show_tools := false  # tools panel, toggled by tapping the lives icons
 
@@ -372,6 +374,8 @@ func _input(event: InputEvent) -> void:
 				debug_aim = not debug_aim
 			elif show_tools and _hud.keep_rect().has_point(event.position):
 				keep_lives = not keep_lives
+			elif show_tools and _hud.ids_rect().has_point(event.position):
+				_set_ids(not show_ids)
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
@@ -389,6 +393,12 @@ func _input(event: InputEvent) -> void:
 		_update_drag()
 
 
+func _set_ids(on: bool) -> void:
+	show_ids = on
+	for l in lands:
+		l.set_show_id(on)
+
+
 func _update_drag() -> void:
 	_drag = (get_global_mouse_position() - _bubble.position).limit_length(MAX_DRAG)
 
@@ -403,6 +413,7 @@ func _tap_lives() -> void:
 		show_tools = false
 		debug_aim = false
 		keep_lives = false
+		_set_ids(false)
 	elif not show_tools and _aim_taps >= AIM_TAPS:
 		_aim_taps = 0
 		show_tools = true
@@ -434,7 +445,7 @@ func _process(delta: float) -> void:
 		State.AIM:
 			_ride(delta)
 		State.SLIDE:
-			var under := _land_at(_bubble.position)
+			var under := _slide_land
 			_bubble.position += _slide_vel * delta
 			if under:
 				_bubble.position += under.carry(delta)
@@ -483,15 +494,15 @@ func _process(delta: float) -> void:
 	elif state == State.WON:
 		title = "All %d jumps!" % TOTAL_JUMPS
 		sub = "Tap to play again"
-	_hud.set_tools(show_tools, debug_aim, keep_lives)
+	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids)
 	_hud.set_info(best, lives, title, sub)
 
 
 ## Treadmills and swaying islands carry the bubble; it falls once carried off the edge.
 func _ride(delta: float) -> void:
-	var l := _land_at(_bubble.position)
-	if l == null:
-		return
+	# The island it stands on, not whatever is under the bubble now: a swaying island has already
+	# moved this frame, and a bubble on its edge would otherwise be left behind in the water.
+	var l := lands[cur]
 	var move := l.carry(delta)
 	if move == Vector2.ZERO:
 		return
@@ -509,6 +520,7 @@ func _on_landed() -> void:
 		_start_fall()
 	elif l.kind == Land.Kind.ICE and _fly_power > 0.12:
 		_slide_vel = _fly_dir * _fly_power * SLIDE_SPEED
+		_slide_land = l
 		_bubble.land_squash()
 		state = State.SLIDE
 	else:

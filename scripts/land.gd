@@ -33,6 +33,7 @@ var _belt := Vector2.ZERO
 var _base := Vector2.ZERO
 var _sway_phase := 0.0
 var _t := 0.0
+var _show_id := false
 
 
 ## `belt_sign` only matters for treadmills: +1 carries the bubble "forward" (up the screen).
@@ -121,6 +122,11 @@ func carry(delta: float) -> Vector2:
 	return Vector2.ZERO
 
 
+func set_show_id(on: bool) -> void:
+	_show_id = on
+	queue_redraw()
+
+
 func contains_world(p: Vector2) -> bool:
 	# Lands are never rotated or scaled, so this also works before the node is in the tree.
 	return Geometry2D.is_point_in_polygon(p - position, poly)
@@ -158,6 +164,12 @@ func _draw() -> void:
 			_draw_belt()
 		Kind.MOVING:
 			_draw_sway()
+	if _show_id:
+		var f := ThemeDB.fallback_font
+		var txt := str(index)
+		var w := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
+		draw_string_outline(f, Vector2(-w * 0.5, 10), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, 6, Color(0, 0, 0, 0.8))
+		draw_string(f, Vector2(-w * 0.5, 10), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color.WHITE)
 
 
 ## Shallows plus waves that roll in and break on the shore.
