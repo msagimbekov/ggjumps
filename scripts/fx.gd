@@ -3,8 +3,8 @@ extends Node2D
 ## Drag indicator, rings and water splashes, drawn above the land and below the bubble.
 
 const GRAVITY := 900.0
-const ARC_COUNT := 5
-const ARC_WIDTH := 5.0
+const ARC_COUNT := 7
+const ARC_WIDTH := 3.5
 ## All the drag arcs together are at most two bubble diameters wide.
 const ARC_BAND := Bubble.R * 3.6
 
@@ -96,7 +96,6 @@ func _draw() -> void:
 ## red as the drag gets longer. Dark outlines keep them readable on any water.
 func _draw_arcs() -> void:
 	var dir := Vector2.from_angle(arcs_angle)
-	var perp := dir.orthogonal()
 	var step := (ARC_BAND - ARC_WIDTH) / (ARC_COUNT - 1)
 	var shown := arcs_power * ARC_COUNT
 	for k in ARC_COUNT:
@@ -104,9 +103,11 @@ func _draw_arcs() -> void:
 		if a <= 0.0:
 			break
 		var tip := arcs_from + dir * (Bubble.R + 14.0 + k * step)
-		var arm := (11.0 + k * 2.8) * (0.6 + 0.4 * a)
-		var w1 := tip - dir * arm * 0.74 + perp * arm * 0.68
-		var w2 := tip - dir * arm * 0.74 - perp * arm * 0.68
+		# The wings sit where a quarter circle of this radius would end.
+		var r := Bubble.R + 14.0 + k * step
+		var spread := (0.6 + 0.4 * a) * PI / 4.0
+		var w1 := arcs_from + dir.rotated(spread) * r
+		var w2 := arcs_from + dir.rotated(-spread) * r
 		var pts := PackedVector2Array([w1, tip, w2])
 		var tone := Color.from_hsv(lerpf(0.33, 0.0, float(k) / (ARC_COUNT - 1)), 0.85, 1.0)
 		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 4.0, true)
