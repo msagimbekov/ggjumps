@@ -15,6 +15,7 @@ var arcs_angle := 0.0
 var arcs_power := 0.0
 ## Test aid: landing line + reticle.
 var aiming := false
+var aim_alpha := 1.0
 var aim_from := Vector2.ZERO
 var aim_to := Vector2.ZERO
 
@@ -79,9 +80,9 @@ func _draw() -> void:
 		var n := int(d.length() / 20.0)
 		for k in range(1, n + 1):
 			var u := float(k) / (n + 1)
-			draw_circle(aim_from + d * u, 3.5, Color(1, 1, 1, 0.85 - 0.45 * u))
-		draw_arc(aim_to, 16.0, 0.0, TAU, 32, Color(1, 1, 1, 0.85), 3.0)
-		draw_circle(aim_to, 3.0, Color(1, 1, 1, 0.9))
+			draw_circle(aim_from + d * u, 3.5, Color(1, 1, 1, (0.85 - 0.45 * u) * aim_alpha))
+		draw_arc(aim_to, 16.0, 0.0, TAU, 32, Color(1, 1, 1, 0.85 * aim_alpha), 3.0)
+		draw_circle(aim_to, 3.0, Color(1, 1, 1, 0.9 * aim_alpha))
 	if tail_on:
 		_draw_tail()
 	for r in _rings:

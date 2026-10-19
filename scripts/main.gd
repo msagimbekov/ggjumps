@@ -21,7 +21,7 @@ const TREADMILLS := false  # treadmill islands work but made the game too hard; 
 const LIFE_PICKUPS := 18  # drops in the level; three give a life
 const RADAR_PICKUPS := 9
 const DROPS_PER_LIFE := 3
-const RADAR_TIME := 7.0  # seconds; blinks for the last two
+const RADAR_TIME := 7.0  # seconds; pulses softly for the last two
 const COLLECT_RADIUS := 34.0  # settle this close to a pickup centre to collect it
 const AIM_TAPS := 5  # taps on the lives icons that show the tools buttons
 const HIDE_TAPS := 3  # taps that hide them again and reset the tools
@@ -507,7 +507,8 @@ func _process(delta: float) -> void:
 		_drops_hold -= delta
 		if _drops_hold <= 0.0:
 			drops = 0
-	_fx.aiming = (debug_aim or _radar_visible()) and pulling
+	_fx.aiming = (debug_aim or radar_time > 0.0) and pulling
+	_fx.aim_alpha = 1.0 if debug_aim else Pickup.radar_alpha(radar_time)
 	if _fx.aiming:
 		_fx.aim_from = _bubble.position
 		_fx.aim_to = _bubble.position - _drag.normalized() * (_drag.length() / MAX_DRAG) * MAX_RANGE
@@ -573,11 +574,6 @@ func _settle(l: Land) -> void:
 	if cur > best:
 		best = cur
 	state = State.WON if best >= TOTAL_JUMPS else State.AIM
-
-
-## The pickup radar: on for RADAR_TIME, blinking through the last two seconds.
-func _radar_visible() -> bool:
-	return radar_time > 2.0 or (radar_time > 0.0 and int(radar_time * 5.0) % 2 == 0)
 
 
 ## Landing on a pickup collects it; settling anywhere else on its island makes it vanish.

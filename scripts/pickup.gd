@@ -127,6 +127,17 @@ static func _rounded(pos: Vector2, half: float, r: float) -> PackedVector2Array:
 	return pts
 
 
+## How visible the pickup radar is with `left` seconds to go: steady, then a slow soft pulse over
+## the last two seconds that fades out for good at the end (no hard flashing).
+static func radar_alpha(left: float) -> float:
+	if left <= 0.0:
+		return 0.0
+	if left > 2.0:
+		return 1.0
+	var pulse := 0.65 + 0.35 * cos((2.0 - left) * TAU * 0.8)
+	return pulse * smoothstep(0.0, 0.5, left)
+
+
 ## One crate, centred on `pos`, about 32 px wide at scale 1. `fill` 0 is a dark empty slot (HUD),
 ## 1 the full crate.
 static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: float, alpha: float, sweep := 0.0) -> void:

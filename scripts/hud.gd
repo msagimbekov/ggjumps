@@ -157,9 +157,8 @@ func _draw() -> void:
 	if radar_left > 0.0:
 		var rp := Rect2(slots.end.x + 10.0, slots.position.y, 44.0, 44.0)
 		draw_style_box(_pill, rp)
-		var blink := radar_left > 2.0 or int(radar_left * 5.0) % 2 == 0
 		var rc := rp.get_center()
-		Pickup.draw_box(self, rc, 0.62, Pickup.Kind.RADAR, 1.0, 1.0 if blink else 0.3, radar_left * 2.5)
+		Pickup.draw_box(self, rc, 0.62, Pickup.Kind.RADAR, 1.0, 0.35 + 0.65 * Pickup.radar_alpha(radar_left), radar_left * 2.5)
 		draw_arc(rc, 20.0, -PI / 2.0, -PI / 2.0 + TAU * radar_left / 7.0, 24, Color(Pickup.GOLD.r, Pickup.GOLD.g, Pickup.GOLD.b, 0.9), 2.5)
 
 	if tools:
