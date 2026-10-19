@@ -530,7 +530,7 @@ func _process(delta: float) -> void:
 		title = "All %d jumps!" % TOTAL_JUMPS
 		sub = "Tap to play again"
 	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids)
-	_hud.set_pickups(drops, radar_time)
+	_hud.set_pickups(drops, radar_time, 1.0 - _drops_hold / 0.8 if _drops_hold > 0.0 else 0.0)
 	_hud.set_info(best, lives, title, sub)
 
 

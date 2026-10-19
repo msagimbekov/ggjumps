@@ -1,7 +1,6 @@
 class_name Pickup
 extends Node2D
-## A collectable sitting on an island. LIFE: a white wooden crate holding a small bubble, three of
-## them give a life. RADAR: a gold radar lens, switches the landing line on for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
+## A collectable sitting on an island. LIFE: a small bubble, three of them make a bigger one (a life). RADAR: a gold radar lens, switches the landing line on for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
 ## Child of its Land, so it rides along on moving islands.
 
 enum Kind { LIFE, RADAR }
@@ -10,10 +9,7 @@ enum State { IDLE, COLLECTED, GONE }
 const FONT := preload("res://fonts/Fredoka.ttf")
 const COLLECT_TIME := 0.9
 const VANISH_TIME := 0.5
-const HALF := 16.0  # half the crate's side at scale 1
 const BUBBLE := Color(0.30, 0.80, 1.0)
-const WOOD := Color(0.55, 0.38, 0.22)
-const CREAM := Color(0.97, 0.94, 0.86)
 const GOLD := Color(1.0, 0.82, 0.25)
 
 var kind := Kind.LIFE
@@ -88,10 +84,10 @@ func _draw() -> void:
 	match state:
 		State.IDLE:
 			draw_set_transform(Vector2(0, 14), 0.0, Vector2(1.0, 0.4))
-			draw_circle(Vector2.ZERO, 16.0 - bob * 0.4, Color(0, 0.08, 0.04, 0.28))
+			draw_circle(Vector2.ZERO, 12.0 - bob * 0.4, Color(0, 0.08, 0.04, 0.28))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			var glow := 0.14 + 0.08 * sin(_t * 3.0)
-			draw_circle(Vector2(0, bob), 28.0, Color(tone.r, tone.g, tone.b, glow))
+			draw_circle(Vector2(0, bob), 26.0, Color(tone.r, tone.g, tone.b, glow))
 			draw_box(self, Vector2(0, bob - 4.0), 1.0, kind, 1.0, 1.0, _t * 2.5)
 		State.COLLECTED:
 			var u := clampf(_anim / COLLECT_TIME, 0.0, 1.0)
@@ -113,18 +109,6 @@ func _draw() -> void:
 		draw_circle(b.p + Vector2(0, -10), 3.2 * k + 0.5, Color(col.r, col.g, col.b, k))
 
 
-## A rounded square outline made of points, `half` from the centre to each side.
-static func _rounded(pos: Vector2, half: float, r: float) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	var corners := [Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1)]
-	for c in 4:
-		var centre: Vector2 = pos + (corners[c] as Vector2) * (half - r)
-		for i in 5:
-			var a := (-PI / 2.0 + c * PI / 2.0) + float(i) / 4.0 * PI / 2.0
-			pts.append(centre + Vector2(cos(a), sin(a)) * r)
-	return pts
-
-
 ## How visible the pickup radar is with `left` seconds to go: steady, then a slow soft pulse over
 ## the last two seconds that fades out for good at the end (no hard flashing).
 static func radar_alpha(left: float) -> float:
@@ -136,23 +120,15 @@ static func radar_alpha(left: float) -> float:
 	return pulse * smoothstep(0.0, 0.5, left)
 
 
-## One pickup, centred on `pos`. LIFE: a white wooden crate holding a small bubble (half the
-## player's size), about 32 px wide at scale 1; `fill` 0 is a dark empty slot (HUD), 1 the full
-## crate. RADAR: the gold radar lens on its own.
+## One pickup, centred on `pos`. LIFE: a small bubble (half the player's size); `fill` 0 is a
+## faint empty outline (HUD slot), 1 the full bubble. RADAR: the gold radar lens.
 static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: float, alpha: float, sweep := 0.0) -> void:
 	if s <= 0.01 or alpha <= 0.0:
 		return
 	if k == Kind.RADAR:
 		draw_lens(ci, pos, s, alpha * fill, sweep)
-		return
-	var h := HALF * s
-	var edge := WOOD.lerp(Color(1, 1, 1, 0.5), 1.0 - fill)
-	var face := CREAM.lerp(Color(0.0, 0.1, 0.2, 0.3), 1.0 - fill)
-	edge.a *= alpha
-	face.a *= alpha
-	ci.draw_colored_polygon(_rounded(pos, h, 4.0 * s), edge)
-	ci.draw_colored_polygon(_rounded(pos, h - 3.0 * s, 2.5 * s), face)
-	draw_bubble(ci, pos, 11.0 * s, fill, alpha)
+	else:
+		draw_bubble(ci, pos, 11.0 * s, fill, alpha)
 
 
 ## A small copy of the player's bubble (same colours); `fill` 0 is just a faint outline.
