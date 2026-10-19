@@ -5,14 +5,14 @@ extends Control
 const FONT := preload("res://fonts/Fredoka.ttf")
 const TOOL_SIZE := 46.0
 const DROPS_SLOTS := 3
-const MAX_ICONS := 5  # more lives than this are shown as a number
+const MAX_ICONS := 4  # more lives than this are shown as a number
 const INK := Color(0.02, 0.12, 0.22, 0.55)
 const GLASS := Color(0.02, 0.14, 0.26, 0.42)
 
 var best := 0
 var total := 99
-var lives := 3
-var max_lives := 3
+var lives := 4
+var max_lives := 4
 var title := ""
 var subtitle := ""
 var top_inset := 0.0  # notch / status bar, in viewport units

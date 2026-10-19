@@ -4,7 +4,7 @@ extends Node2D
 ## drag, distance = drag length * MAX_RANGE. Landing = the bubble's centre inside a land polygon.
 
 const TOTAL_JUMPS := 99
-const START_LIVES := 3
+const START_LIVES := 4
 const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump

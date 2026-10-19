@@ -136,11 +136,12 @@ static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: floa
 ## perfect circle. `fill` 0 is just a faint outline. `phase` keeps neighbours out of step.
 static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0) -> void:
 	var t := Time.get_ticks_msec() * 0.001 + phase
-	var squash := 0.07 * sin(t * 2.3)
+	var wob := lerpf(0.5, 1.0, fill)  # empty slots stay calmer
+	var squash := 0.07 * wob * sin(t * 2.3)
 	var pts := PackedVector2Array()
 	for n in 24:
 		var a := TAU * n / 24.0
-		var rr := r * (1.0 + 0.09 * sin(a * 2.0 + t * 3.1) + 0.06 * sin(a * 3.0 - t * 2.4) + 0.035 * sin(a * 5.0 + t * 4.2))
+		var rr := r * (1.0 + wob * (0.09 * sin(a * 2.0 + t * 3.1) + 0.06 * sin(a * 3.0 - t * 2.4) + 0.035 * sin(a * 5.0 + t * 4.2)))
 		pts.append(pos + Vector2(cos(a) * rr * (1.0 + squash), sin(a) * rr * (1.0 - squash)))
 	var line := Color(1, 1, 1, 0.5).lerp(Color(0.10, 0.50, 0.80), fill)
 	line.a *= alpha
