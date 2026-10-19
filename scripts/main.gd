@@ -64,6 +64,12 @@ func _ready() -> void:
 	_build_nodes()
 	_build_level()
 	_restart()
+	# The game is up: a patched launch counts as good, then look for a newer patch (applies next launch).
+	# Looked up by path so the headless level check (no autoloads) still compiles this script.
+	var ota := get_node_or_null("/root/Ota")
+	if ota:
+		ota.confirm_boot()
+		get_tree().create_timer(3.0).timeout.connect(ota.check_for_update)
 
 
 func _build_nodes() -> void:

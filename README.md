@@ -30,3 +30,25 @@ Godot 4.5.2 exactly (portable at `C:\Users\madis\tools\Godot\`).
 - Import/parse check: `Godot_v4.5.2-stable_win64_console.exe --headless --editor --quit`
 - Android on a phone over USB: enable USB debugging, then Godot's one-click deploy button.
   SDK `C:\Users\madis\Android\Sdk`, JDK 17 (Temurin); both are set in Godot's Editor Settings.
+
+## Over-the-air patches
+
+Same system as ggcuts. `scripts/ota.gd` (autoload `Ota`, **first** in the list) loads a downloaded
+`.pck` in `_init`, before every other autoload and the main scene, so a patch replaces scripts,
+scenes, shaders, fonts and art. After launch the game checks `ota/manifest.json` on GitHub Pages
+(`https://msagimbekov.github.io/ggjumps/ota/`), downloads a newer patch made for this build,
+verifies its SHA-256 and RSA signature and applies it on the **next** launch. Two patched launches
+in a row that never reach the game drop the patch for good.
+
+**Publish:** push to main, then run the **OTA patch** workflow (`.github/workflows/ota.yml`,
+manual, Linux). It exports `.pck` packs for iOS and Android, signs them and pushes them with the
+merged manifest to the `gh-pages` branch (folder `ota/`). Needs the repo secret `OTA_SIGNING_KEY`
+(private key in `~/ggjumps-signing/ota_private.pem`, never in the repo; the public half is in
+`scripts/ota.gd`) and GitHub Pages enabled for `gh-pages`.
+
+**Needs a store build instead:** anything native, export settings, `project.godot` settings,
+`scripts/ota.gd` itself, and the set of `class_name`s and autoloads (the build's "shape",
+`scripts/dev/ota_shape.gd`). Adding the `Ota` autoload changed the shape, so only builds made
+after it (TestFlight etc.) can take patches. Bump `application/config/version` with every change.
+
+Test locally: serve a folder with a manifest and pass `-- --ota-url=http://localhost:8765/`.

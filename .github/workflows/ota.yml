@@ -1,0 +1,134 @@
+name: OTA patch
+
+# Publishes the current main as an over-the-air patch for the iOS and Android builds already
+# installed (scripts/ota.gd): exports the game as resource packs, signs them, and publishes them
+# with the manifest on GitHub Pages (the gh-pages branch, folder ota/). Players get it on their
+# next launch but one (downloaded in the background, applied on the following start).
+#
+# Only builds with the same engine, script classes and autoloads (the "shape") take a patch.
+# Change any of those, or anything native (plugins, export settings, permissions, icons), and it
+# needs a store build instead. The app version (application/config/version) is only a label: a
+# build takes any patch whose version isn't older than its own.
+#
+# Runs on Linux (cheap); manual only. Needs the repository secret:
+#   OTA_SIGNING_KEY  the private key whose public half is in scripts/ota.gd (PEM)
+# and GitHub Pages enabled for the gh-pages branch (Settings -> Pages).
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to patch"
+        type: choice
+        options:
+          - "iOS Android"
+          - "Android"
+          - "iOS"
+        default: "iOS Android"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.5-stable"
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the signing key
+        env:
+          OTA_SIGNING_KEY: ${{ secrets.OTA_SIGNING_KEY }}
+        run: |
+          [ -n "$OTA_SIGNING_KEY" ] || { echo "Missing secret OTA_SIGNING_KEY"; exit 1; }
+          printf '%s\n' "$OTA_SIGNING_KEY" > "$RUNNER_TEMP/ota_private.pem"
+          # The key must match the public key built into the app, or every patch is refused.
+          openssl pkey -in "$RUNNER_TEMP/ota_private.pem" -pubout > "$RUNNER_TEMP/ota_public.pem"
+          python3 - <<'EOF'
+          import os, re
+          app = open("scripts/ota.gd").read()
+          built_in = re.search(r'-----BEGIN PUBLIC KEY-----\n(.*?)\n-----END PUBLIC KEY-----', app, re.S).group(1).split()
+          ours = open(os.environ["RUNNER_TEMP"] + "/ota_public.pem").read().split("\n")[1:-2]
+          assert "".join(built_in) == "".join(ours), "OTA_SIGNING_KEY doesn't match the public key in scripts/ota.gd"
+          print("Signing key matches the app's public key.")
+          EOF
+
+      - name: Install Godot
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          echo "GODOT=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+
+      - name: Import project
+        run: |
+          "$GODOT" --headless --import || true
+          "$GODOT" --headless --import || true
+
+      - name: Work out the patch
+        run: |
+          OUT="$("$GODOT" --headless --path . --script res://scripts/dev/ota_shape.gd)"
+          SHAPE="$(echo "$OUT" | sed -n 's/^shape //p')"
+          APP_VERSION="$(echo "$OUT" | sed -n 's/^version //p')"
+          [ -n "$SHAPE" ] || { echo "$OUT"; exit 1; }
+          echo "SHAPE=$SHAPE" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          # Patch numbers only grow: this workflow's run number.
+          echo "PATCH=${{ github.run_number }}" >> "$GITHUB_ENV"
+          echo "App $APP_VERSION, shape $SHAPE, patch ${{ github.run_number }}"
+
+      - name: Export and sign the packs
+        run: |
+          mkdir -p build/ota
+          for PLATFORM in ${{ github.event.inputs.platforms }}; do
+            FILE="$(echo "$PLATFORM" | tr '[:upper:]' '[:lower:]')-${APP_VERSION}-${PATCH}.pck"
+            "$GODOT" --headless --path . --export-pack "$PLATFORM" "build/ota/$FILE"
+            [ -s "build/ota/$FILE" ] || { echo "Export for $PLATFORM failed"; exit 1; }
+            SHA="$(sha256sum "build/ota/$FILE" | cut -d' ' -f1)"
+            SIG="$(openssl dgst -sha256 -sign "$RUNNER_TEMP/ota_private.pem" "build/ota/$FILE" | base64 -w0)"
+            echo "$PLATFORM $FILE $SHA $SIG" >> build/ota/entries.txt
+            echo "$PLATFORM: $FILE ($(stat -c %s "build/ota/$FILE") bytes)"
+          done
+          rm -f "$RUNNER_TEMP/ota_private.pem" "$RUNNER_TEMP/ota_public.pem"
+
+      - name: Publish to GitHub Pages
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin gh-pages > /dev/null; then
+            git fetch origin gh-pages
+            git worktree add pages origin/gh-pages
+          else
+            git worktree add --detach pages
+            (cd pages && git checkout --orphan gh-pages && git rm -rf . > /dev/null)
+          fi
+          mkdir -p pages/ota
+          touch pages/.nojekyll
+          cp build/ota/*.pck pages/ota/
+          # Merge into the manifest: one entry per platform and build shape, the newest wins.
+          [ -f pages/ota/manifest.json ] || echo '{"patches": []}' > pages/ota/manifest.json
+          python3 - <<'EOF'
+          import json, os
+          path = "pages/ota/manifest.json"
+          patches = json.load(open(path)).get("patches", [])
+          for line in open("build/ota/entries.txt"):
+              platform, file, sha, sig = line.split()
+              patches = [p for p in patches if not (p["platform"] == platform and p["shape"] == os.environ["SHAPE"])]
+              patches.append({"platform": platform, "shape": os.environ["SHAPE"], "app": os.environ["APP_VERSION"],
+                  "version": int(os.environ["PATCH"]), "file": file, "sha256": sha, "signature": sig,
+                  "commit": os.environ["GITHUB_SHA"][:7]})
+          json.dump({"patches": patches}, open(path, "w"), indent=1)
+          # Drop packs no entry points to any more.
+          keep = {p["file"] for p in patches} | {"manifest.json"}
+          for name in os.listdir("pages/ota"):
+              if name not in keep:
+                  os.remove("pages/ota/" + name)
+          print(json.dumps({"patches": [{k: v for k, v in p.items() if k != "signature"} for p in patches]}, indent=1))
+          EOF
+          cd pages
+          git add -A
+          git commit -m "OTA patch $PATCH (app $APP_VERSION, commit ${GITHUB_SHA::7})"
+          git push origin HEAD:gh-pages
+          echo "### OTA patch $PATCH published (app $APP_VERSION, commit ${GITHUB_SHA::7})" >> "$GITHUB_STEP_SUMMARY"
