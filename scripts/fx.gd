@@ -150,7 +150,7 @@ func _draw_arcs() -> void:
 		if a <= 0.0:
 			break
 		var r := Bubble.R + 8.0 + k * step
-		var half := 0.264 * (0.6 + 0.4 * a)  # radians
+		var half := 0.3036 * (0.6 + 0.4 * a)  # radians
 		var tone := _tone(float(k) / (ARC_COUNT - 1))
 		var from := arcs_angle - half
 		var to := arcs_angle + half
