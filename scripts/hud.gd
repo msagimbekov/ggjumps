@@ -146,21 +146,21 @@ func _draw() -> void:
 		var nc := Vector2(lp.position.x + 32.0 + (lives - 1) * 36.0, lp.position.y + lp.size.y * 0.5)
 		draw_arc(nc, 13.0 + 22.0 * (1.0 - _life_flash), 0.0, TAU, 32, Color(1, 1, 1, _life_flash), 3.0)
 
-	# Collected drops: three slots that fill in; radar countdown next to them while it runs.
-	var slots := Rect2(18, top + 84.0, 20.0 + DROPS_SLOTS * 32.0, 44.0)
+	# Collected health crates: three slots that fill in; radar countdown next to them while it runs.
+	var slots := Rect2(18, top + 84.0, 8.0 + DROPS_SLOTS * 36.0, 44.0)
 	draw_style_box(_pill, slots)
 	for i in DROPS_SLOTS:
 		var pulse := 1.0
 		if i == drops - 1 and _drop_pulse > 0.0:
-			pulse = 1.0 + 0.35 * sin(PI * _drop_pulse / 0.5)
-		Pickup.draw_drop(self, Vector2(slots.position.x + 26.0 + i * 32.0, slots.position.y + 28.0), 0.78 * pulse, 1.0 if i < drops else 0.0, 1.0)
+			pulse = 1.0 + 0.3 * sin(PI * _drop_pulse / 0.5)
+		Pickup.draw_box(self, Vector2(slots.position.x + 22.0 + i * 36.0, slots.get_center().y), 0.8 * pulse, Pickup.Kind.LIFE, 1.0 if i < drops else 0.0, 1.0)
 	if radar_left > 0.0:
 		var rp := Rect2(slots.end.x + 10.0, slots.position.y, 44.0, 44.0)
 		draw_style_box(_pill, rp)
 		var blink := radar_left > 2.0 or int(radar_left * 5.0) % 2 == 0
 		var rc := rp.get_center()
-		Pickup.draw_lens(self, rc, 0.7, 1.0 if blink else 0.25, radar_left * 2.5)
-		draw_arc(rc, 20.0, -PI / 2.0, -PI / 2.0 + TAU * radar_left / 7.0, 24, Color(Pickup.GOLD.r, Pickup.GOLD.g, Pickup.GOLD.b, 0.9), 3.0)
+		Pickup.draw_box(self, rc, 0.62, Pickup.Kind.RADAR, 1.0, 1.0 if blink else 0.3, radar_left * 2.5)
+		draw_arc(rc, 20.0, -PI / 2.0, -PI / 2.0 + TAU * radar_left / 7.0, 24, Color(Pickup.GOLD.r, Pickup.GOLD.g, Pickup.GOLD.b, 0.9), 2.5)
 
 	if tools:
 		_tool_button(radar_rect(), radar, 0)
