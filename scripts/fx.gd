@@ -21,10 +21,16 @@ var aim_to := Vector2.ZERO
 var _rings: Array[Dictionary] = []
 var _drops: Array[Dictionary] = []
 var _jets: Array[Dictionary] = []
+var _trail: Array[Dictionary] = []
 
 
 func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, squash := 1.0) -> void:
 	_rings.append({"p": p, "t": 0.0, "dur": dur, "r": radius, "col": col, "sq": squash})
+
+
+## One puff of the jump trail; stronger jumps leave bigger, brighter, longer-lasting ones.
+func trail(p: Vector2, power: float) -> void:
+	_trail.append({"p": p, "t": 0.0, "life": 0.25 + 0.55 * power, "r": Bubble.R * (0.7 + 0.4 * power), "a": 0.18 + 0.4 * power})
 
 
 ## A water splash: rings, a rising jet and a crown of droplets that fly out and fall back.
@@ -48,6 +54,9 @@ func _process(delta: float) -> void:
 	for r in _rings:
 		r.t += delta
 	_rings = _rings.filter(func(r): return r.t < r.dur)
+	for q in _trail:
+		q.t += delta
+	_trail = _trail.filter(func(q): return q.t < q.life)
 	for j in _jets:
 		j.t += delta
 	_jets = _jets.filter(func(j): return j.t < j.dur)
@@ -75,6 +84,10 @@ func _draw() -> void:
 			draw_circle(aim_from + d * u, 3.5, Color(1, 1, 1, 0.85 - 0.45 * u))
 		draw_arc(aim_to, 16.0, 0.0, TAU, 32, Color(1, 1, 1, 0.85), 3.0)
 		draw_circle(aim_to, 3.0, Color(1, 1, 1, 0.9))
+	for q in _trail:
+		var u: float = q.t / q.life
+		draw_circle(q.p, q.r * (1.0 - 0.6 * u), Color(0.45, 0.88, 1.0, q.a * (1.0 - u)))
+		draw_circle(q.p + Vector2(-2, -2), q.r * 0.45 * (1.0 - u), Color(1, 1, 1, q.a * 0.8 * (1.0 - u)))
 	for r in _rings:
 		var u: float = r.t / r.dur
 		var col: Color = r.col
