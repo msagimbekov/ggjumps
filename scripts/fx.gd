@@ -4,9 +4,9 @@ extends Node2D
 
 const GRAVITY := 900.0
 const ARC_COUNT := 5
-const ARC_WIDTH := 4.0
+const ARC_WIDTH := 5.0
 ## All the drag arcs together are at most two bubble diameters wide.
-const ARC_BAND := Bubble.R * 2.4
+const ARC_BAND := Bubble.R * 3.6
 
 ## Quarter circles around the bubble towards the jump direction; more drag, more arcs.
 var arcs_on := false
@@ -92,17 +92,29 @@ func _draw() -> void:
 		draw_circle(pos, d.r, Color(0.92, 0.98, 1.0, 0.95))
 
 
+## Power gauge: a stack of chevrons pointing along the jump, growing and turning from green to
+## red as the drag gets longer. Dark outlines keep them readable on any water.
 func _draw_arcs() -> void:
+	var dir := Vector2.from_angle(arcs_angle)
+	var perp := dir.orthogonal()
 	var step := (ARC_BAND - ARC_WIDTH) / (ARC_COUNT - 1)
 	var shown := arcs_power * ARC_COUNT
 	for k in ARC_COUNT:
 		var a := clampf(shown - k, 0.0, 1.0)
 		if a <= 0.0:
 			break
-		var r := Bubble.R + 10.0 + k * step
-		var tone := Color(0.25, 0.9, 0.3).lerp(Color(1.0, 0.2, 0.2), float(k) / (ARC_COUNT - 1))
-		var col := Color(tone.r, tone.g, tone.b, a * 0.95)
-		draw_arc(arcs_from, r, arcs_angle - PI / 4.0, arcs_angle + PI / 4.0, 16, col, ARC_WIDTH, true)
+		var tip := arcs_from + dir * (Bubble.R + 14.0 + k * step)
+		var arm := (11.0 + k * 2.8) * (0.6 + 0.4 * a)
+		var w1 := tip - dir * arm * 0.74 + perp * arm * 0.68
+		var w2 := tip - dir * arm * 0.74 - perp * arm * 0.68
+		var pts := PackedVector2Array([w1, tip, w2])
+		var tone := Color.from_hsv(lerpf(0.33, 0.0, float(k) / (ARC_COUNT - 1)), 0.85, 1.0)
+		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 4.0, true)
+		for q in pts:
+			draw_circle(q, (ARC_WIDTH + 4.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
+		draw_polyline(pts, Color(tone.r, tone.g, tone.b, a), ARC_WIDTH, true)
+		for q in pts:
+			draw_circle(q, ARC_WIDTH * 0.5, Color(tone.r, tone.g, tone.b, a))
 
 
 ## The water column thrown up where something hits the surface.
