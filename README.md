@@ -7,7 +7,7 @@ a life. 99 jumps to win.
 
 ## Rules (current prototype)
 
-- 4 lives (more from pickups; 5+ show as a number); a miss splashes the bubble, it respawns on the last island. Out of lives: restart.
+- 3 lives (more from pickups; up to 4 show as bubbles, 5+ as a number); a miss splashes the bubble, it respawns on the last island. Out of lives: restart.
 - Island kinds: grass (stops), ice (you slide on after landing), rock (drifts left-right or up-down). Treadmill islands (belt carries you) still exist in code but are off (`TREADMILLS` in main.gd). The last island is plain grass, centred. Islands shrink along the way.
 - Islands two apart are always out of jump range, so none can be skipped; every jump is checked solvable (`scripts/verify_levels.gd`).
 - Dragging shows up to five quarter-circle arcs towards the jump direction (no landing marker). Tapping the lives icons five times toggles the old landing line + target (test aid).

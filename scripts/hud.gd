@@ -11,8 +11,8 @@ const GLASS := Color(0.02, 0.14, 0.26, 0.42)
 
 var best := 0
 var total := 99
-var lives := 4
-var max_lives := 4
+var lives := 3
+var max_lives := 3
 var title := ""
 var subtitle := ""
 var top_inset := 0.0  # notch / status bar, in viewport units
