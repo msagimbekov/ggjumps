@@ -440,7 +440,7 @@ func _process(delta: float) -> void:
 			var u := clampf(_fly_t / _fly_dur, 0.0, 1.0)
 			_bubble.position = _fly_from.lerp(_fly_to, u)
 			_bubble.height = sin(PI * u) * (0.35 + 0.65 * _fly_power)
-			_fx.trail(_bubble.position + Vector2(0, -_bubble.height * 46.0), _fly_power)
+			_fx.trail(_bubble.position + Vector2(0, -_bubble.height * 46.0), _fly_power, _fly_power * MAX_RANGE / _fly_dur)
 			if u >= 1.0:
 				_on_landed()
 		State.AIM:
