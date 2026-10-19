@@ -149,8 +149,8 @@ func _draw_arcs() -> void:
 		var a := clampf(shown - k, 0.0, 1.0)
 		if a <= 0.0:
 			break
-		var r := Bubble.R + 14.0 + k * step
-		var half := 0.24 * (0.6 + 0.4 * a)  # radians: the same width the chevrons had
+		var r := Bubble.R + 8.0 + k * step
+		var half := 0.264 * (0.6 + 0.4 * a)  # radians
 		var tone := _tone(float(k) / (ARC_COUNT - 1))
 		var from := arcs_angle - half
 		var to := arcs_angle + half
