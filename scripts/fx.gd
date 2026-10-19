@@ -140,29 +140,26 @@ func _tone(u: float) -> Color:
 	return mint.lerp(sand, u * 2.0) if u < 0.5 else sand.lerp(coral, u * 2.0 - 1.0)
 
 
-## Power gauge: a stack of chevrons pointing along the jump, growing and turning from green to
-## red as the drag gets longer. Dark outlines keep them readable on any water.
+## Power gauge: a stack of short circle segments around the bubble, centred on the jump
+## direction. More drag, more segments, shifting from mint to coral. Dark outlines keep them readable.
 func _draw_arcs() -> void:
-	var dir := Vector2.from_angle(arcs_angle)
 	var step := (ARC_BAND - ARC_WIDTH) / (ARC_COUNT - 1)
 	var shown := arcs_power * ARC_COUNT
 	for k in ARC_COUNT:
 		var a := clampf(shown - k, 0.0, 1.0)
 		if a <= 0.0:
 			break
-		var tip := arcs_from + dir * (Bubble.R + 14.0 + k * step)
 		var r := Bubble.R + 14.0 + k * step
-		var lat := r * 0.24 * (0.6 + 0.4 * a)  # half width: a third of a quarter circle's
-		var w1 := tip - dir * lat * 0.7 + dir.orthogonal() * lat
-		var w2 := tip - dir * lat * 0.7 - dir.orthogonal() * lat
-		var pts := PackedVector2Array([w1, tip, w2])
+		var half := 0.24 * (0.6 + 0.4 * a)  # radians: the same width the chevrons had
 		var tone := _tone(float(k) / (ARC_COUNT - 1))
-		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 3.0, true)
-		for q in pts:
-			draw_circle(q, (ARC_WIDTH + 3.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
-		draw_polyline(pts, Color(tone.r, tone.g, tone.b, a), ARC_WIDTH, true)
-		for q in pts:
-			draw_circle(q, ARC_WIDTH * 0.5, Color(tone.r, tone.g, tone.b, a))
+		var from := arcs_angle - half
+		var to := arcs_angle + half
+		draw_arc(arcs_from, r, from, to, 8, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 3.0, true)
+		for ang in [from, to]:
+			draw_circle(arcs_from + Vector2.from_angle(ang) * r, (ARC_WIDTH + 3.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
+		draw_arc(arcs_from, r, from, to, 8, Color(tone.r, tone.g, tone.b, a), ARC_WIDTH, true)
+		for ang in [from, to]:
+			draw_circle(arcs_from + Vector2.from_angle(ang) * r, ARC_WIDTH * 0.5, Color(tone.r, tone.g, tone.b, a))
 
 
 ## The water column thrown up where something hits the surface.
