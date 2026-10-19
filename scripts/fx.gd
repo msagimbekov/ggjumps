@@ -92,6 +92,14 @@ func _draw() -> void:
 		draw_circle(pos, d.r, Color(0.92, 0.98, 1.0, 0.95))
 
 
+## Soft palette taken from the game: sea-foam mint, beach sand, coral.
+func _tone(u: float) -> Color:
+	var mint := Color(0.55, 0.93, 0.72)
+	var sand := Color(0.98, 0.88, 0.55)
+	var coral := Color(1.0, 0.52, 0.45)
+	return mint.lerp(sand, u * 2.0) if u < 0.5 else sand.lerp(coral, u * 2.0 - 1.0)
+
+
 ## Power gauge: a stack of chevrons pointing along the jump, growing and turning from green to
 ## red as the drag gets longer. Dark outlines keep them readable on any water.
 func _draw_arcs() -> void:
@@ -103,13 +111,12 @@ func _draw_arcs() -> void:
 		if a <= 0.0:
 			break
 		var tip := arcs_from + dir * (Bubble.R + 14.0 + k * step)
-		# The wings sit where a quarter circle of this radius would end.
 		var r := Bubble.R + 14.0 + k * step
-		var spread := (0.6 + 0.4 * a) * PI / 4.0
-		var w1 := arcs_from + dir.rotated(spread) * r
-		var w2 := arcs_from + dir.rotated(-spread) * r
+		var lat := r * 0.24 * (0.6 + 0.4 * a)  # half width: a third of a quarter circle's
+		var w1 := tip - dir * lat * 0.7 + dir.orthogonal() * lat
+		var w2 := tip - dir * lat * 0.7 - dir.orthogonal() * lat
 		var pts := PackedVector2Array([w1, tip, w2])
-		var tone := Color.from_hsv(lerpf(0.33, 0.0, float(k) / (ARC_COUNT - 1)), 0.85, 1.0)
+		var tone := _tone(float(k) / (ARC_COUNT - 1))
 		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 4.0, true)
 		for q in pts:
 			draw_circle(q, (ARC_WIDTH + 4.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
