@@ -1,0 +1,24 @@
+{
+ "patches": [
+  {
+   "platform": "iOS",
+   "shape": "fc132040da07abd640eec014a4802d7115b9e9279993235e160fc915e6a1f206",
+   "app": "0.1.0",
+   "version": 1,
+   "file": "ios-0.1.0-1.pck",
+   "sha256": "cf8eb4438bbda6b323c20c7f385f4579b14614df2d7a26c0d922fdfb2bb9c945",
+   "signature": "OFU1kan/1wQUWWZW7G1SWiNM4hr6KjDITKfFEeY10rOOF/PRWspomAMTgFwi3BLbTJnWYvQYpBZSp2jwpHVFvQmpfkoCmNsoX6w1Ai9s4iijQTlf7BRvoVaURu9BD8KqNmqX1tfvWjp/oEFOmeO47kBVMhjBHRL4HCxG/XaN1ZtGOt836Pg20ueiiznKWjW4ks3Sz07xMsgiCpLaVYmacRUZsAMhBBmlmd+r5/93fE0HrRG8bGwmDJJtIDIJRgFpvHaSYG5jIblGzj2YCnyoflD4N2Xf1IRezUa4SonrYchhvjSg2mpGvC7dOqnjCSA8hnZO3E2ePIlgPAv3Es8g8w==",
+   "commit": "6bbf2b8"
+  },
+  {
+   "platform": "Android",
+   "shape": "fc132040da07abd640eec014a4802d7115b9e9279993235e160fc915e6a1f206",
+   "app": "0.1.0",
+   "version": 1,
+   "file": "android-0.1.0-1.pck",
+   "sha256": "1469b6fe22af92a85fb67c0b75eb065aad6a4782a23dd32626a5238cb48b2ffd",
+   "signature": "SyWE8PCSH8AfP9EXizV81PFXgQdOiEOIJTz2I7Nty0GLMeEq9DNAImc6y8Z14ksmD9Q5dN6mGDNcuvtK4tfgOcxdDk0O9Yd70doVz9ufcNNXB69siCTXQ9+KwR4kHxhS2dPIy9o0zZytaDknHgw0k5c1hU9tBBUrcihP3pBeoZ1HkkGwuQDepRV/UyUDjSGq7cqb1K0IdUHjmzV/vw3iDI9rJfiKS1cGoY8qm32E8MqT3kiyaGEacfotv4WusPdVXDVHB/9s3bzoqznXzM7JepAq7JdeDPcKCF+0mKCHL1GHTGHar2j1thFMsA8nBTmh+DMG3BBjJt8yfl00IUimDQ==",
+   "commit": "6bbf2b8"
+  }
+ ]
+}
