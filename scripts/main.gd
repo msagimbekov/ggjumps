@@ -17,6 +17,7 @@ const LEVEL_ATTEMPTS := 60
 const SOLVE_MIN_WINDOW := 8  # in 1% power steps (~38 px of landing tolerance)
 const SOLVE_MIN_WINDOW_OFFSET := 4
 const SKIP_MARGIN := 10.0  # islands two apart must be farther than MAX_RANGE by this much
+const TREADMILLS := false  # treadmill islands work but made the game too hard; off for now
 const AIM_TAPS := 5  # taps on the lives icons that show the tools buttons
 const HIDE_TAPS := 3  # taps that hide them again and reset the tools
 
@@ -35,7 +36,7 @@ var _cam: Camera2D
 var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
-var _spawn_x := 0.0  # x of the island when the spot was saved (swaying islands only)
+var _spawn_land := Vector2.ZERO  # island position when the spot was saved (swaying islands move it)
 var _spawn_pos := Vector2.ZERO  # world spot the bubble last landed on, to respawn there
 var _critters: Critters
 var _movers: Array[Land] = []
@@ -129,9 +130,10 @@ func _build_level() -> void:
 			var rot := rng.randf() * PI
 			var belt_sign := 1.0 if rng.randf() < 0.5 else -1.0
 			var phase := rng.randf() * TAU
+			var vertical := rng.randf() < 0.4
 			var p_ice := lerpf(0.10, 0.30, t) if i >= 10 else 0.0
-			var p_tread := lerpf(0.08, 0.16, t) if i >= 14 else 0.0
-			var p_move := lerpf(0.10, 0.18, t) if i >= 7 and prev.kind != Land.Kind.MOVING else 0.0
+			var p_tread := lerpf(0.08, 0.16, t) if TREADMILLS and i >= 14 else 0.0
+			var p_move := lerpf(0.20, 0.32, t) if i >= 5 and prev.kind != Land.Kind.MOVING else 0.0
 			var kind := Land.Kind.GRASS
 			if kind_roll < p_ice:
 				kind = Land.Kind.ICE
@@ -139,9 +141,20 @@ func _build_level() -> void:
 				kind = Land.Kind.TREADMILL
 			elif kind_roll < p_ice + p_tread + p_move:
 				kind = Land.Kind.MOVING
-			if attempt == LEVEL_ATTEMPTS - 1:
+			var last := i == TOTAL_JUMPS
+			if attempt == LEVEL_ATTEMPTS - 1 or last:
 				kind = Land.Kind.GRASS
-			var thin := kind in [Land.Kind.GRASS, Land.Kind.ICE] and i >= 6 and thin_roll < lerpf(0.05, 0.45, t)
+			var thin := kind == Land.Kind.GRASS and not last and i >= 6 and thin_roll < lerpf(0.05, 0.45, t)
+			if kind == Land.Kind.MOVING:
+				gap += Land.SWAY_AMP  # it sways towards its neighbours, keep the closest approach as wide
+			if kind == Land.Kind.ICE:
+				radius = maxf(radius, 72.0)  # ice is hard enough to stop on
+			if last:
+				radius = 80.0  # the goal island: plain, full size, centred
+				ang = atan2(-1.0, 0.0)
+				var dx := 270.0 - prev.position.x
+				var dist := prev.radius_max + radius + gap
+				ang = Vector2(dx, -sqrt(maxf(dist * dist - dx * dx, 1.0))).angle() if absf(dx) < dist * 0.8 else Vector2(signf(dx) * 0.8, -0.6).angle()
 			if kind == Land.Kind.TREADMILL:
 				rot = 0.0  # treadmills always run straight up / down
 			if l:
@@ -158,13 +171,15 @@ func _build_level() -> void:
 				next += dir * (gap - _poly_gap(prev, l))
 			var lo := 80.0
 			var hi := 460.0
-			if kind == Land.Kind.MOVING:
+			if kind == Land.Kind.MOVING and not vertical:
 				lo += Land.SWAY_AMP + 4.0
 				hi -= Land.SWAY_AMP + 4.0
 			next.x = clampf(next.x, lo, hi)
+			if last:
+				next.x = 270.0
 			l.position = next
 			if kind == Land.Kind.MOVING:
-				l.setup_motion(phase)
+				l.setup_motion(phase, vertical)
 			if i >= 2:
 				var far := lands[i - 2]
 				if _poly_gap(far, l) - far.amp - l.amp < MAX_RANGE + SKIP_MARGIN:
@@ -216,18 +231,18 @@ func _water_at(p: Vector2, margin: float) -> bool:
 ## previous island (centre and 55% towards / away from the target), aiming at a few points
 ## of the target, and sweeps the power. Needs a window of powers wide enough to hit by hand.
 func _is_solvable(from: Land, to: Land) -> bool:
-	var fx0 := from.position.x
-	var tx0 := to.position.x
+	var fx0 := from.position
+	var tx0 := to.position
 	var ok := true
 	# A swaying island has to work at both ends and in the middle of its sway.
 	for fo: float in ([0.0] if from.amp == 0.0 else [-from.amp, 0.0, from.amp]):
 		for to_off: float in ([0.0] if to.amp == 0.0 else [-to.amp, 0.0, to.amp]):
-			from.position.x = fx0 + fo
-			to.position.x = tx0 + to_off
+			from.position = fx0 + from.sway_dir * fo
+			to.position = tx0 + to.sway_dir * to_off
 			if not _is_solvable_at(from, to, from.amp > 0.0 or to.amp > 0.0):
 				ok = false
-	from.position.x = fx0
-	to.position.x = tx0
+	from.position = fx0
+	to.position = tx0
 	return ok
 
 
@@ -325,7 +340,7 @@ func _restart() -> void:
 ## Saves the bubble's current world position as the respawn spot.
 func _remember_spot() -> void:
 	_spawn_pos = _bubble.position
-	_spawn_x = lands[cur].position.x
+	_spawn_land = lands[cur].position
 
 
 func _activate() -> void:
@@ -530,6 +545,6 @@ func _after_fall() -> void:
 	if home.kind == Land.Kind.TREADMILL and not home.contains_world(_spawn_pos + home.belt_dir() * Land.BELT_SPEED * 2.0):
 		_bubble.position.y = home.position.y
 	if lands[cur].amp > 0.0:  # a swaying island took its spot along
-		_bubble.position.x += lands[cur].position.x - _spawn_x
+		_bubble.position += lands[cur].position - _spawn_land
 	_bubble.land_squash()
 	state = State.AIM

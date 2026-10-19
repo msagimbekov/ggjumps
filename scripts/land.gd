@@ -9,13 +9,14 @@ const OUTLINE_POINTS := 32
 const BELT_SPEED := 35.0
 const BELT_HALF := Vector2(56.0, 90.0)  # every treadmill is this size, always vertical
 const SWAY_SPEED := 0.9  # rad/s
-const SWAY_AMP := 64.0
+const SWAY_AMP := 48.0
 
 var index := 0
 var kind := Kind.GRASS
 var poly := PackedVector2Array()  # local space, rotated and squashed already
 var radius_max := 0.0  # farthest outline point from the centre
-var amp := 0.0  # sideways sway amplitude, 0 = static
+var amp := 0.0  # sway amplitude, 0 = static
+var sway_dir := Vector2.RIGHT  # axis of the sway: RIGHT (left-right) or DOWN (up-down)
 var frame_delta := Vector2.ZERO  # how far a swaying island moved in the last update
 var _inner := PackedVector2Array()
 var _shallow_far := PackedVector2Array()
@@ -29,7 +30,7 @@ var _rot := 0.0
 var _half := Vector2.ZERO  # treadmill half extents (unrotated)
 var _belt_sign := 1.0
 var _belt := Vector2.ZERO
-var _base_x := 0.0
+var _base := Vector2.ZERO
 var _sway_phase := 0.0
 var _t := 0.0
 
@@ -85,23 +86,24 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 			_rim_color = Color(0.55, 0.36, 0.20)
 			_fill_color = Color(0.36, 0.66, 0.32)
 		Kind.MOVING:
-			_rim_color = Color(0.55, 0.36, 0.20)
-			_fill_color = Color(0.86, 0.68, 0.42)
-			_deco_color = Color(0.45, 0.29, 0.16)
+			_rim_color = Color(0.36, 0.38, 0.43)
+			_fill_color = Color(0.60, 0.62, 0.66)
+			_deco_color = Color(0.40, 0.42, 0.47)
 	queue_redraw()
 
 
 ## Makes the island sway sideways around its current x. Call after it is positioned.
-func setup_motion(phase: float) -> void:
+func setup_motion(phase: float, vertical := false) -> void:
 	amp = SWAY_AMP
-	_base_x = position.x
+	sway_dir = Vector2.DOWN if vertical else Vector2.RIGHT
+	_base = position
 	_sway_phase = phase
 
 
 func set_motion_time(time: float) -> void:
-	var nx := _base_x + amp * sin(time * SWAY_SPEED + _sway_phase)
-	frame_delta = Vector2(nx - position.x, 0.0)
-	position.x = nx
+	var np := _base + sway_dir * amp * sin(time * SWAY_SPEED + _sway_phase)
+	frame_delta = np - position
+	position = np
 
 
 ## Unit direction of the belt (treadmills only).
@@ -202,6 +204,12 @@ func _draw_belt() -> void:
 
 
 func _draw_sway() -> void:
-	var n := _inner.size()
-	for i in range(0, n, 2):
-		draw_line(_inner[i] * 0.93, _inner[(i + 1) % n] * 0.93, _deco_color, 3.0)
+	# Rock: a lighter, lumpy top, cracks and pits.
+	var top := PackedVector2Array()
+	for p in _inner:
+		top.append(p * 0.78 + Vector2(-4, -5))
+	draw_colored_polygon(top, Color(0.72, 0.74, 0.78, 0.55))
+	for c in _deco:
+		draw_line(c, c + Vector2(10, -4), _deco_color, 2.0)
+		draw_line(c + Vector2(5, -2), c + Vector2(8, 5), _deco_color, 2.0)
+		draw_circle(c + Vector2(-7, 6), 3.5, Color(0.45, 0.47, 0.52, 0.7))
