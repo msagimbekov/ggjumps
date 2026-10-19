@@ -101,26 +101,34 @@ func _draw() -> void:
 		draw_circle(pos, d.r, Color(0.92, 0.98, 1.0, 0.95))
 
 
+## Streamlined wake: as wide as the bubble where it leaves its edges, then sweeping in to a fine
+## point, like the flow behind a teardrop. A paler core streak runs down the middle.
 func _draw_tail() -> void:
 	var back := -tail_dir
 	var side := tail_dir.orthogonal()
-	var length := Bubble.R * (1.6 + 1.0 * tail_power)  # from the bubble centre; the first R hides under it
-	var width := Bubble.R * 0.5
+	var length := Bubble.R * (2.0 + 1.2 * tail_power)  # from just behind the bubble centre
+	var alpha := 0.75 + 0.25 * tail_power
+	_wake(back, side, length, Bubble.R * 0.95, 1.7, Color(0.55, 0.9, 1.0, alpha))
+	_wake(back, side, length * 0.8, Bubble.R * 0.4, 1.4, Color(0.95, 1.0, 1.0, alpha * 0.8))
+
+
+func _wake(back: Vector2, side: Vector2, length: float, width: float, sharp: float, col: Color) -> void:
+	const SEGMENTS := 14
 	var left := PackedVector2Array()
 	var right := PackedVector2Array()
-	var cl := PackedColorArray()
-	for s in 9:
-		var u := float(s) / 8.0
-		var w := width * pow(1.0 - u, 1.4)
-		var p := tail_pos + back * length * u
+	for i in SEGMENTS + 1:
+		var u := float(i) / SEGMENTS
+		var w := width * pow(1.0 - u, sharp)
+		var p := tail_pos + back * (Bubble.R * 0.5 + length * u)
 		left.append(p + side * w)
 		right.append(p - side * w)
-		cl.append(Color(0.6, 0.93, 1.0, (0.65 + 0.35 * tail_power) * (1.0 - u * 0.7)))
 	var pts := PackedVector2Array(left)
-	var cols := PackedColorArray(cl)
-	for s in range(8, -1, -1):
-		pts.append(right[s])
-		cols.append(cl[s])
+	var cols := PackedColorArray()
+	for i in SEGMENTS + 1:
+		cols.append(Color(col.r, col.g, col.b, col.a * (1.0 - float(i) / SEGMENTS)))
+	for i in range(SEGMENTS, -1, -1):
+		pts.append(right[i])
+		cols.append(cols[i])
 	draw_polygon(pts, cols)
 
 
