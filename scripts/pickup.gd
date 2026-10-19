@@ -1,8 +1,7 @@
 class_name Pickup
 extends Node2D
-## A crate sitting on an island. LIFE: a white wooden first-aid crate with a red cross, three of
-## them give a life. RADAR: a dark steel crate with a gold radar on it, switches the landing line on
-## for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
+## A collectable sitting on an island. LIFE: a white wooden crate holding a small bubble, three of
+## them give a life. RADAR: a gold radar lens, switches the landing line on for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
 ## Child of its Land, so it rides along on moving islands.
 
 enum Kind { LIFE, RADAR }
@@ -12,10 +11,9 @@ const FONT := preload("res://fonts/Fredoka.ttf")
 const COLLECT_TIME := 0.9
 const VANISH_TIME := 0.5
 const HALF := 16.0  # half the crate's side at scale 1
-const RED := Color(0.90, 0.16, 0.20)
+const BUBBLE := Color(0.30, 0.80, 1.0)
 const WOOD := Color(0.55, 0.38, 0.22)
 const CREAM := Color(0.97, 0.94, 0.86)
-const STEEL := Color(0.15, 0.26, 0.37)
 const GOLD := Color(1.0, 0.82, 0.25)
 
 var kind := Kind.LIFE
@@ -39,7 +37,7 @@ func is_active() -> bool:
 
 
 func _tone() -> Color:
-	return RED if kind == Kind.LIFE else GOLD
+	return BUBBLE if kind == Kind.LIFE else GOLD
 
 
 ## Collected: pops up and fades, with a ring, sparkles and a floating note.
@@ -138,49 +136,48 @@ static func radar_alpha(left: float) -> float:
 	return pulse * smoothstep(0.0, 0.5, left)
 
 
-## One crate, centred on `pos`, about 32 px wide at scale 1. `fill` 0 is a dark empty slot (HUD),
-## 1 the full crate.
+## One pickup, centred on `pos`. LIFE: a white wooden crate holding a small bubble (half the
+## player's size), about 32 px wide at scale 1; `fill` 0 is a dark empty slot (HUD), 1 the full
+## crate. RADAR: the gold radar lens on its own.
 static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: float, alpha: float, sweep := 0.0) -> void:
 	if s <= 0.01 or alpha <= 0.0:
 		return
+	if k == Kind.RADAR:
+		draw_lens(ci, pos, s, alpha * fill, sweep)
+		return
 	var h := HALF * s
-	var outer := _rounded(pos, h, 4.0 * s)
-	var inner := _rounded(pos, h - 3.0 * s, 2.5 * s)
-	var edge: Color
-	var face: Color
-	if k == Kind.LIFE:
-		edge = WOOD.lerp(Color(1, 1, 1, 0.5), 1.0 - fill)
-		face = CREAM.lerp(Color(0.0, 0.1, 0.2, 0.3), 1.0 - fill)
-	else:
-		edge = GOLD.lerp(Color(1, 1, 1, 0.5), 1.0 - fill)
-		face = STEEL.lerp(Color(0.0, 0.1, 0.2, 0.3), 1.0 - fill)
+	var edge := WOOD.lerp(Color(1, 1, 1, 0.5), 1.0 - fill)
+	var face := CREAM.lerp(Color(0.0, 0.1, 0.2, 0.3), 1.0 - fill)
 	edge.a *= alpha
 	face.a *= alpha
-	ci.draw_colored_polygon(outer, edge)
-	ci.draw_colored_polygon(inner, face)
-	if k == Kind.LIFE:
-		var plank := Color(WOOD.r, WOOD.g, WOOD.b, 0.28 * fill * alpha)
-		ci.draw_line(pos + Vector2(-h + 4.0 * s, -h * 0.5), pos + Vector2(h - 4.0 * s, -h * 0.5), plank, 1.5 * s)
-		ci.draw_line(pos + Vector2(-h + 4.0 * s, h * 0.5), pos + Vector2(h - 4.0 * s, h * 0.5), plank, 1.5 * s)
-		var cross := Color(RED.r, RED.g, RED.b, alpha).lerp(Color(1, 1, 1, 0.35 * alpha), 1.0 - fill)
-		var arm := 4.0 * s
-		var reach := h * 0.62
-		ci.draw_rect(Rect2(pos + Vector2(-arm, -reach), Vector2(arm * 2.0, reach * 2.0)), cross)
-		ci.draw_rect(Rect2(pos + Vector2(-reach, -arm), Vector2(reach * 2.0, arm * 2.0)), cross)
-	else:
-		for corner: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			ci.draw_circle(pos + corner * (h - 5.0 * s), 1.6 * s, Color(GOLD.r, GOLD.g, GOLD.b, 0.8 * fill * alpha))
-		draw_lens(ci, pos, 0.55 * s, alpha * fill, sweep)
+	ci.draw_colored_polygon(_rounded(pos, h, 4.0 * s), edge)
+	ci.draw_colored_polygon(_rounded(pos, h - 3.0 * s, 2.5 * s), face)
+	draw_bubble(ci, pos, 11.0 * s, fill, alpha)
 
 
-## The radar image: ring, four ticks, centre dot and a sweeping wedge.
+## A small copy of the player's bubble (same colours); `fill` 0 is just a faint outline.
+static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float) -> void:
+	var line := Color(1, 1, 1, 0.5).lerp(Color(0.10, 0.50, 0.80), fill)
+	line.a *= alpha
+	if fill > 0.0:
+		ci.draw_circle(pos, r, Color(0.30, 0.80, 1.0, 0.95 * fill * alpha))
+		ci.draw_circle(pos + Vector2(-0.12, -0.18) * r, r * 0.7, Color(0.62, 0.95, 1.0, 0.5 * fill * alpha))
+		ci.draw_circle(pos + Vector2(-0.32, -0.36) * r, r * 0.25, Color(1, 1, 1, 0.85 * fill * alpha))
+		ci.draw_circle(pos + Vector2(0.22, 0.38) * r, r * 0.11, Color(1, 1, 1, 0.5 * fill * alpha))
+	ci.draw_arc(pos, r, 0.0, TAU, 24, line, maxf(r * 0.09, 1.2), true)
+
+
+## The radar lens: ring, four ticks, centre dot and a sweeping wedge.
 static func draw_lens(ci: CanvasItem, pos: Vector2, s: float, alpha: float, sweep: float) -> void:
 	if s <= 0.01 or alpha <= 0.0:
 		return
+	var dark := Color(0.62, 0.42, 0.05, 0.55 * alpha)
 	var gold := Color(GOLD.r, GOLD.g, GOLD.b, alpha)
-	ci.draw_arc(pos, 13.0 * s, 0.0, TAU, 28, gold, 3.2 * s, true)
+	ci.draw_arc(pos, 13.0 * s, 0.0, TAU, 28, dark, 6.5 * s, true)
+	ci.draw_arc(pos, 13.0 * s, 0.0, TAU, 28, gold, 3.5 * s, true)
 	for i in 4:
 		var d := Vector2.from_angle(i * PI / 2.0)
-		ci.draw_line(pos + d * 15.0 * s, pos + d * 21.0 * s, gold, 3.0 * s, true)
-	ci.draw_circle(pos, 3.2 * s, gold)
-	ci.draw_arc(pos, 7.5 * s, sweep - 1.0, sweep, 8, Color(1, 1, 1, 0.75 * alpha), 4.0 * s)
+		ci.draw_line(pos + d * 16.0 * s, pos + d * 22.0 * s, dark, 6.0 * s, true)
+		ci.draw_line(pos + d * 16.0 * s, pos + d * 22.0 * s, gold, 3.0 * s, true)
+	ci.draw_circle(pos, 3.6 * s, gold)
+	ci.draw_arc(pos, 7.5 * s, sweep - 1.0, sweep, 8, Color(1, 1, 1, 0.7 * alpha), 5.0 * s)
