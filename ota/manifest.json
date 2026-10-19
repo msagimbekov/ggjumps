@@ -19,6 +19,16 @@
    "sha256": "1469b6fe22af92a85fb67c0b75eb065aad6a4782a23dd32626a5238cb48b2ffd",
    "signature": "SyWE8PCSH8AfP9EXizV81PFXgQdOiEOIJTz2I7Nty0GLMeEq9DNAImc6y8Z14ksmD9Q5dN6mGDNcuvtK4tfgOcxdDk0O9Yd70doVz9ufcNNXB69siCTXQ9+KwR4kHxhS2dPIy9o0zZytaDknHgw0k5c1hU9tBBUrcihP3pBeoZ1HkkGwuQDepRV/UyUDjSGq7cqb1K0IdUHjmzV/vw3iDI9rJfiKS1cGoY8qm32E8MqT3kiyaGEacfotv4WusPdVXDVHB/9s3bzoqznXzM7JepAq7JdeDPcKCF+0mKCHL1GHTGHar2j1thFMsA8nBTmh+DMG3BBjJt8yfl00IUimDQ==",
    "commit": "6bbf2b8"
+  },
+  {
+   "platform": "iOS",
+   "shape": "e6a864a4a58579d9a985e84b127e15a90888474e74b306227c7056cc0e1d6bb0",
+   "app": "0.1.0",
+   "version": 2,
+   "file": "ios-0.1.0-2.pck",
+   "sha256": "4ed55bb978b27faef2f0ef4d6773feb2524be7e78631d4011399b02e44ec1784",
+   "signature": "wfe3hSjT8+NY/g8lFusVlbWjkbR/LICiA/Y7j6kM27T3k7tziM/QjdR0awv1DtQAhylXh6E5sFWnYzs9+hmBd7D9UFEEGPSRcmCuIEAIeNn5NxVwBWHyGzI3reIDZuhYHSbYjsdJ0eIhhu+EpP6QH1BMAo0xEUhCOoSLlOI08juBi+VvPMSWoTXJE4uypIeQaZTDn69S7MaNGJTh4jKlafso8Lvevz8cLPgtrhXqrzVdZ1z10IjaUI649gQ0llkYD0ljVat71h6hZKFXxu52KBiLhXsr3+FvCWEVpNqqXIjKUuWpxyK1z0NdS/xUQDWwox1iBETBl2b2CEHFJ9Tntw==",
+   "commit": "70c6b33"
   }
  ]
 }
