@@ -30,7 +30,7 @@ func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, sq
 
 ## One puff of the jump trail; stronger jumps leave bigger, brighter, longer-lasting ones.
 func trail(p: Vector2, power: float) -> void:
-	_trail.append({"p": p, "t": 0.0, "life": 0.25 + 0.55 * power, "r": Bubble.R * (0.7 + 0.4 * power), "a": 0.18 + 0.4 * power})
+	_trail.append({"p": p, "t": 0.0, "life": 0.2 + 0.3 * power, "r": Bubble.R * (0.7 + 0.4 * power), "a": 0.4 + 0.45 * power})
 
 
 ## A water splash: rings, a rising jet and a crown of droplets that fly out and fall back.
