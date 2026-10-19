@@ -17,7 +17,8 @@ const LEVEL_ATTEMPTS := 60
 const SOLVE_MIN_WINDOW := 8  # in 1% power steps (~38 px of landing tolerance)
 const SOLVE_MIN_WINDOW_OFFSET := 4
 const SKIP_MARGIN := 10.0  # islands two apart must be farther than MAX_RANGE by this much
-const AIM_TAPS := 5  # taps on the lives icons that toggle the landing line
+const AIM_TAPS := 5  # taps on the lives icons that show the tools buttons
+const HIDE_TAPS := 3  # taps that hide them again and reset the tools
 
 enum State { AIM, FLY, SLIDE, FALL, OVER, WON }
 
@@ -34,7 +35,8 @@ var _cam: Camera2D
 var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
-var _spawn_off := Vector2.ZERO  # where on its island the bubble last stood, to respawn there
+var _spawn_x := 0.0  # x of the island when the spot was saved (swaying islands only)
+var _spawn_pos := Vector2.ZERO  # world spot the bubble last stood on (jump start / landing), to respawn there
 var _critters: Critters
 var _movers: Array[Land] = []
 var _aim_taps := 0
@@ -311,7 +313,7 @@ func _restart() -> void:
 	_drag = Vector2.ZERO
 	_bubble.reset()
 	_bubble.position = lands[0].position
-	_spawn_off = Vector2.ZERO
+	_remember_spot()
 	_bubble.land_squash()
 	state = State.AIM
 	_activate()
@@ -320,6 +322,12 @@ func _restart() -> void:
 
 
 ## Only islands near the bubble animate their shore waves and belts.
+## Saves the bubble's current world position as the respawn spot.
+func _remember_spot() -> void:
+	_spawn_pos = _bubble.position
+	_spawn_x = lands[cur].position.x
+
+
 func _activate() -> void:
 	for l in lands:
 		l.set_process(absi(l.index - cur) <= 6)
@@ -370,21 +378,26 @@ func _update_drag() -> void:
 	_drag = (get_global_mouse_position() - _bubble.position).limit_length(MAX_DRAG)
 
 
-## Five quick taps on the lives icons show or hide the tools buttons.
+## Five quick taps on the lives icons show the tools buttons; three hide them and reset the tools.
 func _tap_lives() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	_aim_taps = _aim_taps + 1 if now - _aim_tap_time < 2.0 else 1
 	_aim_tap_time = now
-	if _aim_taps >= AIM_TAPS:
+	if show_tools and _aim_taps >= HIDE_TAPS:
 		_aim_taps = 0
-		show_tools = not show_tools
+		show_tools = false
+		debug_aim = false
+		keep_lives = false
+	elif not show_tools and _aim_taps >= AIM_TAPS:
+		_aim_taps = 0
+		show_tools = true
 
 
 func _jump(v: Vector2) -> void:
 	_fly_power = clampf(v.length() / MAX_DRAG, 0.0, 1.0)
 	_fly_dir = v.normalized()
 	_fly_from = _bubble.position
-	_spawn_off = _bubble.position - lands[cur].position
+	_remember_spot()
 	_fly_to = _fly_from + _fly_dir * _fly_power * MAX_RANGE
 	_fly_dur = 0.28 + 0.4 * _fly_power
 	_fly_t = 0.0
@@ -490,7 +503,7 @@ func _on_landed() -> void:
 
 func _settle(l: Land) -> void:
 	cur = l.index
-	_spawn_off = _bubble.position - l.position
+	_remember_spot()
 	_activate()
 	_bubble.land_squash()
 	_fx.ring(_bubble.position, 44.0, Color(1, 1, 1, 0.7), 0.5)
@@ -512,6 +525,8 @@ func _after_fall() -> void:
 		state = State.OVER
 		return
 	_bubble.reset()
-	_bubble.position = lands[cur].position + _spawn_off
+	_bubble.position = _spawn_pos
+	if lands[cur].amp > 0.0:  # a swaying island took its spot along
+		_bubble.position.x += lands[cur].position.x - _spawn_x
 	_bubble.land_squash()
 	state = State.AIM
