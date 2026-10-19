@@ -18,6 +18,7 @@ var radius_max := 0.0  # farthest outline point from the centre
 var amp := 0.0  # sway amplitude, 0 = static
 var sway_dir := Vector2.RIGHT  # axis of the sway: RIGHT (left-right) or DOWN (up-down)
 var frame_delta := Vector2.ZERO  # how far a swaying island moved in the last update
+var pickup: Pickup  # collectable on this island, if any
 var _inner := PackedVector2Array()
 var _shallow_far := PackedVector2Array()
 var _shallow_near := PackedVector2Array()

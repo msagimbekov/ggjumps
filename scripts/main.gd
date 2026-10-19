@@ -18,6 +18,11 @@ const SOLVE_MIN_WINDOW := 8  # in 1% power steps (~38 px of landing tolerance)
 const SOLVE_MIN_WINDOW_OFFSET := 4
 const SKIP_MARGIN := 10.0  # islands two apart must be farther than MAX_RANGE by this much
 const TREADMILLS := false  # treadmill islands work but made the game too hard; off for now
+const LIFE_PICKUPS := 18  # drops in the level; three give a life
+const RADAR_PICKUPS := 9
+const DROPS_PER_LIFE := 3
+const RADAR_TIME := 7.0  # seconds; blinks for the last two
+const COLLECT_RADIUS := 34.0  # settle this close to a pickup centre to collect it
 const AIM_TAPS := 5  # taps on the lives icons that show the tools buttons
 const HIDE_TAPS := 3  # taps that hide them again and reset the tools
 
@@ -38,6 +43,9 @@ var _cam: Camera2D
 var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
+var drops := 0  # life drops collected towards the next life
+var radar_time := 0.0  # seconds of pickup radar left
+var _drops_hold := 0.0  # keeps a full counter on screen for a moment after the life is added
 var _spawn_land := Vector2.ZERO  # island position when the spot was saved (swaying islands move it)
 var _spawn_pos := Vector2.ZERO  # world spot the bubble last landed on, to respawn there
 var _critters: Critters
@@ -63,6 +71,7 @@ var _time := 0.0
 func _ready() -> void:
 	_build_nodes()
 	_build_level()
+	_place_pickups()
 	_restart()
 	# The game is up: a patched launch counts as good, then look for a newer patch (applies next launch).
 	# Looked up by path so the headless level check (no autoloads) still compiles this script.
@@ -339,6 +348,12 @@ func _restart() -> void:
 	_remember_spot()
 	_bubble.land_squash()
 	state = State.AIM
+	drops = 0
+	radar_time = 0.0
+	_drops_hold = 0.0
+	for l in lands:
+		if l.pickup:
+			l.pickup.reset()
 	_activate()
 	_cam.global_position = _cam_target()
 	_cam.reset_smoothing()
@@ -353,7 +368,10 @@ func _remember_spot() -> void:
 
 func _activate() -> void:
 	for l in lands:
-		l.set_process(absi(l.index - cur) <= 6)
+		var near := absi(l.index - cur) <= 6
+		l.set_process(near)
+		if l.pickup:
+			l.pickup.set_process(near)
 
 
 func _cam_target() -> Vector2:
@@ -483,7 +501,13 @@ func _process(delta: float) -> void:
 		_fx.arcs_from = _bubble.position
 		_fx.arcs_angle = (-_drag).angle()
 		_fx.arcs_power = _drag.length() / MAX_DRAG
-	_fx.aiming = debug_aim and pulling
+	if radar_time > 0.0:
+		radar_time = maxf(radar_time - delta, 0.0)
+	if _drops_hold > 0.0:
+		_drops_hold -= delta
+		if _drops_hold <= 0.0:
+			drops = 0
+	_fx.aiming = (debug_aim or _radar_visible()) and pulling
 	if _fx.aiming:
 		_fx.aim_from = _bubble.position
 		_fx.aim_to = _bubble.position - _drag.normalized() * (_drag.length() / MAX_DRAG) * MAX_RANGE
@@ -505,6 +529,7 @@ func _process(delta: float) -> void:
 		title = "All %d jumps!" % TOTAL_JUMPS
 		sub = "Tap to play again"
 	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids)
+	_hud.set_pickups(drops, radar_time)
 	_hud.set_info(best, lives, title, sub)
 
 
@@ -542,11 +567,85 @@ func _settle(l: Land) -> void:
 	cur = l.index
 	_remember_spot()
 	_activate()
+	_resolve_pickup(l)
 	_bubble.land_squash()
 	_fx.ring(_bubble.position, 44.0, Color(1, 1, 1, 0.7), 0.5)
 	if cur > best:
 		best = cur
 	state = State.WON if best >= TOTAL_JUMPS else State.AIM
+
+
+## The pickup radar: on for RADAR_TIME, blinking through the last two seconds.
+func _radar_visible() -> bool:
+	return radar_time > 2.0 or (radar_time > 0.0 and int(radar_time * 5.0) % 2 == 0)
+
+
+## Landing on a pickup collects it; settling anywhere else on its island makes it vanish.
+func _resolve_pickup(l: Land) -> void:
+	var p := l.pickup
+	if p == null or not p.is_active():
+		return
+	if p.global_position.distance_to(_bubble.position) > COLLECT_RADIUS:
+		p.vanish()
+	elif p.kind == Pickup.Kind.RADAR:
+		radar_time = RADAR_TIME
+		p.collect("Radar %ds" % int(RADAR_TIME))
+	else:
+		if _drops_hold > 0.0:
+			drops = 0
+			_drops_hold = 0.0
+		drops += 1
+		if drops >= DROPS_PER_LIFE:
+			lives += 1
+			_drops_hold = 0.8
+			p.collect("+1 life!")
+		else:
+			p.collect("%d/%d" % [drops, DROPS_PER_LIFE])
+
+
+## Scatters the pickups over the level: LIFE_PICKUPS drops and RADAR_PICKUPS lenses, one island
+## each, evenly spread, never on the start, the goal or ice (you slide off it). Own seeded RNG so
+## the level above is untouched.
+func _place_pickups() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = LEVEL_SEED + 7
+	var used := {}
+	var first := 2
+	var last := TOTAL_JUMPS - 1
+	for spec: Array in [[Pickup.Kind.LIFE, LIFE_PICKUPS], [Pickup.Kind.RADAR, RADAR_PICKUPS]]:
+		var n: int = spec[1]
+		var span := float(last - first + 1) / n
+		for k in n:
+			var lo := first + int(k * span)
+			var hi := maxi(first + int((k + 1) * span) - 1, lo)
+			var idx := -1
+			for t in 12:
+				var c := rng.randi_range(lo, hi)
+				if not used.has(c) and lands[c].kind != Land.Kind.ICE:
+					idx = c
+					break
+			if idx < 0:  # the segment is full: take any free island
+				for c in range(first, last + 1):
+					if not used.has(c) and lands[c].kind != Land.Kind.ICE:
+						idx = c
+						break
+			if idx < 0:
+				continue
+			used[idx] = true
+			_attach_pickup(lands[idx], spec[0], rng)
+
+
+func _attach_pickup(l: Land, kind: Pickup.Kind, rng: RandomNumberGenerator) -> void:
+	var p := Pickup.new()
+	p.kind = kind
+	var core := Transform2D(0.0, Vector2(0.6, 0.6), 0.0, Vector2.ZERO) * l.poly
+	for t in 40:
+		var c := Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * l.radius_max * 0.6
+		if Geometry2D.is_point_in_polygon(c, core):
+			p.position = c
+			break
+	l.add_child(p)
+	l.pickup = p
 
 
 func _start_fall() -> void:
