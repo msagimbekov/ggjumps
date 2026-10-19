@@ -4,9 +4,9 @@ extends Node2D
 
 const GRAVITY := 900.0
 const ARC_COUNT := 7
-const ARC_WIDTH := 3.5
+const ARC_WIDTH := 2.5
 ## All the drag arcs together are at most two bubble diameters wide.
-const ARC_BAND := Bubble.R * 3.6
+const ARC_BAND := Bubble.R * 2.2
 
 ## Quarter circles around the bubble towards the jump direction; more drag, more arcs.
 var arcs_on := false
@@ -117,9 +117,9 @@ func _draw_arcs() -> void:
 		var w2 := tip - dir * lat * 0.7 - dir.orthogonal() * lat
 		var pts := PackedVector2Array([w1, tip, w2])
 		var tone := _tone(float(k) / (ARC_COUNT - 1))
-		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 4.0, true)
+		draw_polyline(pts, Color(0, 0.08, 0.16, 0.4 * a), ARC_WIDTH + 3.0, true)
 		for q in pts:
-			draw_circle(q, (ARC_WIDTH + 4.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
+			draw_circle(q, (ARC_WIDTH + 3.0) * 0.5, Color(0, 0.08, 0.16, 0.4 * a))
 		draw_polyline(pts, Color(tone.r, tone.g, tone.b, a), ARC_WIDTH, true)
 		for q in pts:
 			draw_circle(q, ARC_WIDTH * 0.5, Color(tone.r, tone.g, tone.b, a))
