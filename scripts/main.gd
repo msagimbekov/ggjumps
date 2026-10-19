@@ -36,7 +36,7 @@ var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
 var _spawn_x := 0.0  # x of the island when the spot was saved (swaying islands only)
-var _spawn_pos := Vector2.ZERO  # world spot the bubble last stood on (jump start / landing), to respawn there
+var _spawn_pos := Vector2.ZERO  # world spot the bubble last landed on, to respawn there
 var _critters: Critters
 var _movers: Array[Land] = []
 var _aim_taps := 0
@@ -397,7 +397,6 @@ func _jump(v: Vector2) -> void:
 	_fly_power = clampf(v.length() / MAX_DRAG, 0.0, 1.0)
 	_fly_dir = v.normalized()
 	_fly_from = _bubble.position
-	_remember_spot()
 	_fly_to = _fly_from + _fly_dir * _fly_power * MAX_RANGE
 	_fly_dur = 0.28 + 0.4 * _fly_power
 	_fly_t = 0.0
@@ -526,6 +525,10 @@ func _after_fall() -> void:
 		return
 	_bubble.reset()
 	_bubble.position = _spawn_pos
+	var home := lands[cur]
+	# Too close to the end of a treadmill: it would fall within 2 s, so start from mid-belt (same x).
+	if home.kind == Land.Kind.TREADMILL and not home.contains_world(_spawn_pos + home.belt_dir() * Land.BELT_SPEED * 2.0):
+		_bubble.position.y = home.position.y
 	if lands[cur].amp > 0.0:  # a swaying island took its spot along
 		_bubble.position.x += lands[cur].position.x - _spawn_x
 	_bubble.land_squash()

@@ -104,6 +104,11 @@ func set_motion_time(time: float) -> void:
 	position.x = nx
 
 
+## Unit direction of the belt (treadmills only).
+func belt_dir() -> Vector2:
+	return _belt
+
+
 ## Where this island pushes whatever stands on it during `delta` seconds.
 func carry(delta: float) -> Vector2:
 	match kind:
