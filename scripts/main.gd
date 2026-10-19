@@ -5,7 +5,7 @@ extends Node2D
 
 const TOTAL_JUMPS := 99
 const START_LIVES := 3
-const MAX_RANGE := 380.0  # jump distance at full drag
+const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump
 const GRAB_RADIUS := 90.0
@@ -32,6 +32,7 @@ var _cam: Camera2D
 var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
+var _spawn_off := Vector2.ZERO  # where on its island the bubble last stood, to respawn there
 var _critters: Critters
 var _movers: Array[Land] = []
 var _aim_taps := 0
@@ -308,6 +309,7 @@ func _restart() -> void:
 	_drag = Vector2.ZERO
 	_bubble.reset()
 	_bubble.position = lands[0].position
+	_spawn_off = Vector2.ZERO
 	_bubble.land_squash()
 	state = State.AIM
 	_activate()
@@ -376,6 +378,7 @@ func _jump(v: Vector2) -> void:
 	_fly_power = clampf(v.length() / MAX_DRAG, 0.0, 1.0)
 	_fly_dir = v.normalized()
 	_fly_from = _bubble.position
+	_spawn_off = _bubble.position - lands[cur].position
 	_fly_to = _fly_from + _fly_dir * _fly_power * MAX_RANGE
 	_fly_dur = 0.28 + 0.4 * _fly_power
 	_fly_t = 0.0
@@ -480,6 +483,7 @@ func _on_landed() -> void:
 
 func _settle(l: Land) -> void:
 	cur = l.index
+	_spawn_off = _bubble.position - l.position
 	_activate()
 	_bubble.land_squash()
 	_fx.ring(_bubble.position, 44.0, Color(1, 1, 1, 0.7), 0.5)
@@ -491,7 +495,7 @@ func _settle(l: Land) -> void:
 func _start_fall() -> void:
 	lives -= 1
 	_fall_t = 0.0
-	_fx.splash(_bubble.position)
+	_fx.splash(_bubble.position, 1.0, 0.45)
 	state = State.FALL
 
 
@@ -500,6 +504,6 @@ func _after_fall() -> void:
 		state = State.OVER
 		return
 	_bubble.reset()
-	_bubble.position = lands[cur].position
+	_bubble.position = lands[cur].position + _spawn_off
 	_bubble.land_squash()
 	state = State.AIM

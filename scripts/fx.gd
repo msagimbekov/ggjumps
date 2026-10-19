@@ -6,7 +6,7 @@ const GRAVITY := 900.0
 const ARC_COUNT := 5
 const ARC_WIDTH := 4.0
 ## All the drag arcs together are at most two bubble diameters wide.
-const ARC_BAND := Bubble.R * 4.0
+const ARC_BAND := Bubble.R * 2.4
 
 ## Quarter circles around the bubble towards the jump direction; more drag, more arcs.
 var arcs_on := false
@@ -28,18 +28,20 @@ func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, sq
 
 
 ## A water splash: rings, a rising jet and a crown of droplets that fly out and fall back.
-func splash(p: Vector2, k := 1.0) -> void:
+func splash(p: Vector2, k := 1.0, rise := -1.0) -> void:
+	if rise < 0.0:
+		rise = k
 	ring(p, 80.0 * k, Color(0.85, 0.97, 1.0, 0.9), 0.9, 0.55)
 	ring(p, 46.0 * k, Color(1, 1, 1, 0.7), 0.6, 0.55)
-	_jets.append({"p": p, "t": 0.0, "dur": 0.6, "k": k})
+	_jets.append({"p": p, "t": 0.0, "dur": 0.6, "k": rise})
 	var crown := int(18.0 * k) + 4
 	for i in crown:
 		var a := TAU * i / crown + randf_range(-0.15, 0.15)
 		var sp := randf_range(60.0, 125.0) * k
-		_drops.append({"p": p, "z": 2.0, "vz": randf_range(230.0, 340.0) * sqrt(k), "v": Vector2.from_angle(a) * sp, "r": randf_range(2.2, 3.6) * sqrt(k)})
+		_drops.append({"p": p, "z": 2.0, "vz": randf_range(230.0, 340.0) * sqrt(rise), "v": Vector2.from_angle(a) * sp, "r": randf_range(2.2, 3.6) * sqrt(k)})
 	for i in int(6.0 * k) + 2:
 		var v := Vector2.from_angle(randf() * TAU) * randf_range(8.0, 35.0) * k
-		_drops.append({"p": p, "z": 6.0, "vz": randf_range(380.0, 520.0) * sqrt(k), "v": v, "r": randf_range(3.0, 4.6) * sqrt(k)})
+		_drops.append({"p": p, "z": 6.0, "vz": randf_range(380.0, 520.0) * sqrt(rise), "v": v, "r": randf_range(3.0, 4.6) * sqrt(k)})
 
 
 func _process(delta: float) -> void:
@@ -98,7 +100,8 @@ func _draw_arcs() -> void:
 		if a <= 0.0:
 			break
 		var r := Bubble.R + 10.0 + k * step
-		var col := Color(1, 1, 1, a * (0.95 - 0.1 * k))
+		var tone := Color(0.25, 0.9, 0.3).lerp(Color(1.0, 0.2, 0.2), float(k) / (ARC_COUNT - 1))
+		var col := Color(tone.r, tone.g, tone.b, a * 0.95)
 		draw_arc(arcs_from, r, arcs_angle - PI / 4.0, arcs_angle + PI / 4.0, 16, col, ARC_WIDTH, true)
 
 

@@ -6,7 +6,7 @@ extends Node2D
 enum Kind { GRASS, ICE, TREADMILL, MOVING }
 
 const OUTLINE_POINTS := 32
-const BELT_SPEED := 55.0
+const BELT_SPEED := 35.0
 const SWAY_SPEED := 0.9  # rad/s
 const SWAY_AMP := 64.0
 
