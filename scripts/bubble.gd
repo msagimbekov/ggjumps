@@ -2,6 +2,8 @@ class_name Bubble
 extends Node2D
 ## The player: a small liquid bubble. Purely visual; main.gd moves it and sets height/pull/sink.
 
+const Skins := preload("res://scripts/skins.gd")
+
 const R := 22.0
 const PULL_REF := 160.0
 const POINTS := 28
@@ -55,7 +57,7 @@ func _draw() -> void:
 		for k in REFLECTION_LAYERS:
 			var u := float(k) / (REFLECTION_LAYERS - 1)
 			var rr := R * rs * (1.0 + blur * (1.0 - u))
-			draw_circle(Vector2.ZERO, rr, Color(0.55, 0.9, 1.0, base / REFLECTION_LAYERS * 1.8))
+			draw_circle(Vector2.ZERO, rr, Color(Skins.color("glow"), base / REFLECTION_LAYERS * 1.8))
 
 	var offset := Vector2(0, -height * 46) + pull * 0.18
 	var angle := 0.0
@@ -76,10 +78,10 @@ func _draw() -> void:
 	var core := PackedVector2Array()
 	for q in pts:
 		core.append(q * 0.7 + Vector2(-2.0, -3.5))
-	draw_colored_polygon(pts, Color(0.30, 0.80, 1.0, 0.9 * al))
-	draw_colored_polygon(core, Color(0.62, 0.95, 1.0, 0.5 * al))
+	draw_colored_polygon(pts, Color(Skins.color("body"), 0.9 * al))
+	draw_colored_polygon(core, Color(Skins.color("core"), 0.5 * al))
 	var ring := pts.duplicate()
 	ring.append(pts[0])
-	draw_polyline(ring, Color(0.10, 0.50, 0.80, 0.9 * al), 2.0)
+	draw_polyline(ring, Color(Skins.color("rim"), 0.9 * al), 2.0)
 	draw_circle(Vector2(-7, -8), 5.5, Color(1, 1, 1, 0.85 * al))
 	draw_circle(Vector2(5, 8), 2.4, Color(1, 1, 1, 0.5 * al))

@@ -1,15 +1,17 @@
 class_name SettingsPanel
 extends Control
-## Gear button in the bottom-right corner; it opens the Settings window (sound for now: music
-## and effects volume, each with an icon that mutes it and brings the old volume back).
+## Gear button in the bottom-right corner; it opens the Settings window: the bubble colour, and
+## music and effects volume (each with an icon that mutes it and brings the old volume back).
 ## Taps come from main.gd through handle(), before the game sees them.
 
 const Modal := preload("res://scripts/ui/modal.gd")
 const SoundRow := preload("res://scripts/ui/sound_row.gd")
+const SkinRow := preload("res://scripts/ui/skin_row.gd")
 const BUTTON := 52.0
 
 var sound: Sound
 var modal_parent: Node  # layer the window opens in
+var on_skin_change: Callable  # the bubble colour was changed
 var bottom_inset := 0.0  # home indicator / nav bar, in viewport units
 var is_open := false
 
@@ -43,6 +45,13 @@ func open() -> void:
 		return
 	is_open = true
 	var m := Modal.new("Settings")
+	var look := Label.new()
+	look.text = "Bubble"
+	look.theme_type_variation = "MutedLabel"
+	m.content.add_child(look)
+	var skins := SkinRow.new()
+	skins.on_change = on_skin_change
+	m.content.add_child(skins)
 	var heading := Label.new()
 	heading.text = "Sound"
 	heading.theme_type_variation = "MutedLabel"

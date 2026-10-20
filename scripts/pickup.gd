@@ -7,9 +7,9 @@ enum Kind { LIFE, RADAR }
 enum State { IDLE, COLLECTED, GONE }
 
 const FONT := preload("res://fonts/Fredoka.ttf")
+const Skins := preload("res://scripts/skins.gd")
 const COLLECT_TIME := 0.9
 const VANISH_TIME := 0.5
-const BUBBLE := Color(0.30, 0.80, 1.0)
 const GOLD := Color(1.0, 0.82, 0.25)
 
 var kind := Kind.LIFE
@@ -34,7 +34,7 @@ func is_active() -> bool:
 
 
 func _tone() -> Color:
-	return BUBBLE if kind == Kind.LIFE else GOLD
+	return Skins.color("body") if kind == Kind.LIFE else GOLD
 
 
 ## Collected: pops up and fades, with a ring, sparkles and a floating note.
@@ -134,7 +134,8 @@ static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: floa
 
 ## A small liquid drop in the player's colours: a wobbling, gently squashing blob, never a
 ## perfect circle. `fill` 0 is just a faint outline. `phase` keeps neighbours out of step.
-static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0) -> void:
+## In the current bubble colour, or in skin `skin` (the settings previews).
+static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0, skin := -1) -> void:
 	var t := Time.get_ticks_msec() * 0.001 + phase
 	var wob := lerpf(0.5, 1.0, fill)  # empty slots stay calmer
 	var squash := 0.07 * wob * sin(t * 2.3)
@@ -143,14 +144,14 @@ static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alp
 		var a := TAU * n / 24.0
 		var rr := r * (1.0 + wob * (0.09 * sin(a * 2.0 + t * 3.1) + 0.06 * sin(a * 3.0 - t * 2.4) + 0.035 * sin(a * 5.0 + t * 4.2)))
 		pts.append(pos + Vector2(cos(a) * rr * (1.0 + squash), sin(a) * rr * (1.0 - squash)))
-	var line := Color(1, 1, 1, 0.5).lerp(Color(0.10, 0.50, 0.80), fill)
+	var line := Color(1, 1, 1, 0.5).lerp(Skins.color("rim", skin), fill)
 	line.a *= alpha
 	if fill > 0.0:
-		ci.draw_colored_polygon(pts, Color(0.30, 0.80, 1.0, 0.95 * fill * alpha))
+		ci.draw_colored_polygon(pts, Color(Skins.color("body", skin), 0.95 * fill * alpha))
 		var core := PackedVector2Array()
 		for q in pts:
 			core.append(pos + (q - pos) * 0.68 + Vector2(-0.1, -0.16) * r)
-		ci.draw_colored_polygon(core, Color(0.62, 0.95, 1.0, 0.5 * fill * alpha))
+		ci.draw_colored_polygon(core, Color(Skins.color("core", skin), 0.5 * fill * alpha))
 		ci.draw_circle(pos + Vector2(-0.33, -0.36) * r, r * 0.22, Color(1, 1, 1, 0.85 * fill * alpha))
 		ci.draw_circle(pos + Vector2(0.24, 0.4) * r, r * 0.1, Color(1, 1, 1, 0.5 * fill * alpha))
 	var loop := PackedVector2Array(pts)

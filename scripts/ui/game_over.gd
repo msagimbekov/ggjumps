@@ -6,13 +6,14 @@ signal watch_ad
 signal retry
 
 
-func _init(jumps: int, total: int) -> void:
+func _init(islands: int, total: int) -> void:
 	super("Splash!", 440.0, false)
+	_title.add_theme_font_size_override("font_size", 58)
 	var line := Label.new()
 	line.text = "Out of lives"
 	content.add_child(line)
 	var score := Label.new()
-	score.text = "%d / %d jumps" % [jumps, total]
+	score.text = "%d / %d islands" % [islands, total]
 	score.theme_type_variation = "BigLabel"
 	content.add_child(score)
 	var ad := Button.new()

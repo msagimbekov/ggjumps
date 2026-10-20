@@ -3,6 +3,8 @@ extends Node2D
 ## Drag indicator, rings and water splashes, drawn above the land and below the bubble.
 ## Rings on the water surface go on a layer under the islands, so land hides them.
 
+const Skins := preload("res://scripts/skins.gd")
+
 const GRAVITY := 900.0
 const ARC_COUNT := 7
 const ARC_WIDTH := 2.5
@@ -132,7 +134,7 @@ func _draw_tail() -> void:
 	var side := tail_dir.orthogonal()
 	var length := Bubble.R * (2.0 + 1.2 * tail_power)  # from just behind the bubble centre
 	var alpha := 0.75 + 0.25 * tail_power
-	_wake(back, side, length, Bubble.R * 0.95, 1.7, Color(0.55, 0.9, 1.0, alpha))
+	_wake(back, side, length, Bubble.R * 0.95, 1.7, Color(Skins.color("glow"), alpha))
 	_wake(back, side, length * 0.8, Bubble.R * 0.4, 1.4, Color(0.95, 1.0, 1.0, alpha * 0.8))
 
 

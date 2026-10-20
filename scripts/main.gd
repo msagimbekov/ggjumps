@@ -146,7 +146,7 @@ func _build_nodes() -> void:
 	add_child(ui)
 	_hud = Hud.new()
 	_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud.total = TOTAL_JUMPS
+	_hud.total = TOTAL_JUMPS + 1  # islands, the start one included
 	_hud.max_lives = START_LIVES
 	ui.add_child(_hud)
 	_hud.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -181,6 +181,7 @@ func _build_nodes() -> void:
 	_modals.layer = 20
 	add_child(_modals)
 	_settings.modal_parent = _modals
+	_settings.on_skin_change = _on_skin_change
 
 
 ## Same layout on every device: one seeded RNG, always drawing the same numbers per attempt.
@@ -863,9 +864,16 @@ func _after_fall() -> void:
 	_respawn()
 
 
+## A new bubble colour: redraw the drops on islands that are not animating right now.
+func _on_skin_change() -> void:
+	for l in lands:
+		if l.pickup:
+			l.pickup.queue_redraw()
+
+
 ## Out of lives: watch an ad for one more life, or start over.
 func _show_game_over() -> void:
-	var g := GameOver.new(best, TOTAL_JUMPS)
+	var g := GameOver.new(best + 1, TOTAL_JUMPS + 1)
 	g.watch_ad.connect(_show_ad)
 	g.retry.connect(_restart)
 	_modals.add_child(g)

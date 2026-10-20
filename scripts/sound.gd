@@ -85,6 +85,7 @@ func toggle_sfx() -> void:
 ## Writes the volumes to disk (called when the settings panel closes or a slider is let go).
 func save() -> void:
 	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS)  # keep the other settings in the file
 	cfg.set_value("audio", "music", music_volume)
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("audio", "music_prev", _music_prev)

@@ -3,6 +3,7 @@ extends Control
 ## Jump counter, lives, progress and the end-of-run card. Redraws only when something changed.
 
 const FONT := preload("res://fonts/Fredoka.ttf")
+const Skins := preload("res://scripts/skins.gd")
 const TOOL_SIZE := 46.0
 const DROPS_SLOTS := 3
 const MAX_ICONS := 4  # more lives than this are shown as a number
@@ -10,7 +11,7 @@ const INK := Color(0.02, 0.12, 0.22, 0.55)
 const GLASS := Color(0.02, 0.14, 0.26, 0.42)
 
 var best := 0
-var total := 99
+var total := 100  # islands
 var lives := 3
 var max_lives := 3
 var title := ""
@@ -138,8 +139,8 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	var top := top_inset + 18.0
 
-	# Score pill: big jump count, muted total.
-	var num := str(best)
+	# Score pill: the island the bubble has reached (the start is island 1), muted total.
+	var num := str(best + 1)
 	var num_w := _bold.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 40).x
 	var tot := " / %d" % total
 	var tot_w := _medium.get_string_size(tot, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
@@ -210,15 +211,15 @@ func _draw() -> void:
 		var card := Rect2(size.x * 0.5 - 220.0, size.y * 0.5 - 150.0, 440.0, 270.0)
 		draw_style_box(_card, card)
 		_text_c(_bold, card.position.y + 105.0, title, 64, Color.WHITE)
-		_text_c(_medium, card.position.y + 160.0, "%d / %d jumps" % [best, total], 28, Color(0.72, 0.92, 1.0))
+		_text_c(_medium, card.position.y + 160.0, "%d / %d islands" % [best + 1, total], 28, Color(0.72, 0.92, 1.0))
 		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
 
 
 ## One life: the player's bubble in miniature, or a hollow ring for a lost one.
 func _life_bubble(c: Vector2, full: bool) -> void:
 	if full:
-		draw_circle(c, 13.0, Color(0.30, 0.80, 1.0))
-		draw_arc(c, 13.0, 0.0, TAU, 24, Color(0.10, 0.50, 0.80), 2.0)
+		draw_circle(c, 13.0, Skins.color("body"))
+		draw_arc(c, 13.0, 0.0, TAU, 24, Skins.color("rim"), 2.0)
 		draw_circle(c + Vector2(-4, -4), 3.5, Color(1, 1, 1, 0.9))
 	else:
 		draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1, 0.3), 2.5)
