@@ -123,6 +123,8 @@ def pan(mono, p):
 
 def add(buf, x, at):
     i = int(at * SR)
+    if i < 0:  # a humanised note nudged before the start
+        x, i = x[-i:], 0
     j = min(i + len(x), len(buf))
     if j > i:
         buf[i:j] += x[: j - i]
@@ -159,121 +161,203 @@ def write(name, x, peak=0.9):
 
 # ---------------------------------------------------------------------------- music
 
-BPM = 72.0
+BPM = 84.0
 BEAT = 60.0 / BPM
 BAR = BEAT * 4
 BARS = 24
 
-# Two bars per chord, all soft colours: Dmaj9, Bm9, Gmaj9(#11), Asus2.
-CHORDS = [
-    [50, 57, 61, 64, 66],  # Dmaj9 (D A C# E F#)
-    [47, 54, 57, 61, 62],  # Bm9-ish (B F# A C# D)
-    [43, 50, 54, 57, 61],  # Gmaj9 (G D F# A C#)
-    [45, 52, 57, 59, 64],  # Asus2 (A E A B E)
+# Island progression, two bars each: C, Am, F, G (C major, the classic lazy-beach turn).
+ROOTS = [48, 45, 41, 43]
+# Ukulele voicings, strings G C E A (re-entrant tuning): C 0003, Am 2000, F 2010, G 0232.
+UKE = [
+    [67, 60, 64, 72],
+    [69, 60, 64, 69],
+    [69, 60, 65, 69],
+    [67, 62, 67, 71],
 ]
-# Notes the drifting plucks pick from, per chord.
-DRIFT = [
-    [62, 66, 69, 73, 76, 78],
-    [59, 62, 66, 69, 73, 74],
-    [62, 66, 67, 69, 73, 74],
-    [61, 64, 66, 69, 71, 76],
+# Island strum per bar: (beat, down?, velocity).
+STRUM = [(0.0, True, 0.9), (1.0, True, 0.6), (1.5, False, 0.45), (2.5, False, 0.5), (3.0, True, 0.7), (3.5, False, 0.45)]
+# Steel drum tune, per two-bar chord: (beat, midi, beats).
+TUNE = [
+    [(0, 76, 1), (1, 79, 1), (2, 81, 1.5), (3.5, 79, 0.5), (4, 76, 2), (6, 74, 2)],
+    [(0, 72, 1), (1, 76, 1), (2, 79, 2), (4, 81, 1), (5, 79, 1), (6, 76, 2)],
+    [(0, 77, 1.5), (1.5, 76, 0.5), (2, 74, 1), (3, 72, 1), (4, 74, 2), (6, 69, 2)],
+    [(0, 71, 1), (1, 74, 1), (2, 79, 2), (4, 77, 1), (5, 76, 1), (6, 74, 2)],
 ]
-# A few long bell notes over the middle pass: (beat offset in the 2-bar chord, midi, beats).
-BELLS = [
-    [(0, 78, 3), (4, 76, 4)],
-    [(0, 74, 4), (5, 73, 3)],
-    [(0, 71, 3), (4, 74, 4)],
-    [(0, 73, 6)],
-]
+# Marimba broken chords for the last pass.
+MARIMBA = [[60, 64, 67, 72], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67]]
+
+
+def pluck(f, dur, seed, bright=7000.0, decay=0.9965):
+    """Karplus-Strong string: a burst of noise circulating in a delay line, losing its
+    highs each pass. Nylon/ukulele-like with a soft excitation and short sustain."""
+    r = np.random.default_rng(seed)
+    n = int(dur * SR)
+    period = SR / f
+    d = int(period)
+    a = period - d  # fractional part, by linear interpolation
+    y = np.zeros(n + d + 1)
+    # A finger pulls the string into a triangle (plucked a fifth of the way along), which keeps
+    # the fundamental strong and the overtones falling off softly; a little noise adds the grain.
+    x = np.linspace(0.0, 1.0, d + 1)
+    burst = np.where(x < 0.2, x / 0.2, (1.0 - x) / 0.8)
+    burst = burst - burst.mean() + 0.4 * lowpass(r.standard_normal(d + 1), bright)
+    y[: d + 1] = burst
+    k = d + 1
+    while k < len(y):
+        end = min(k + d, len(y))
+        m = end - k
+        y[k:end] = decay * ((1 - a) * y[k - d:k - d + m] + a * y[k - d - 1:k - d - 1 + m])
+        k = end
+    out = y[d + 1:d + 1 + n]
+    # A little wooden body resonance.
+    body = bandpass(out, 180, 320) * 0.3 + bandpass(out, 420, 700) * 0.2
+    return (out + body) * np.clip(np.arange(n) / (0.002 * SR), 0, 1)
+
+
+def marimba(f, dur):
+    t = t_of(dur)
+    tone = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.5)
+    tone += 0.25 * np.sin(2 * np.pi * f * 3.98 * t) * np.exp(-t / 0.09)
+    tone += 0.08 * np.sin(2 * np.pi * f * 9.9 * t) * np.exp(-t / 0.025)
+    return tone * np.clip(t / 0.003, 0, 1)
+
+
+def steel_pan(f, dur):
+    """Steel drum: strong octave and twelfth partials that bloom a moment after the hit."""
+    t = t_of(dur)
+    tone = np.sin(2 * np.pi * f * t) * np.exp(-t / 0.9)
+    tone += 0.55 * np.sin(2 * np.pi * f * 2.003 * t) * np.exp(-t / 0.45) * np.clip(t / 0.02, 0, 1)
+    tone += 0.3 * np.sin(2 * np.pi * f * 3.01 * t) * np.exp(-t / 0.22)
+    tone += 0.12 * np.sin(2 * np.pi * f * 4.02 * t) * np.exp(-t / 0.08)
+    tone *= 1.0 + 0.04 * np.sin(2 * np.pi * 5.5 * t)  # the shimmer of the pan
+    ping = bandpass(rng.standard_normal(len(t)), 2000, 6000) * np.exp(-t / 0.004) * 0.3
+    return (tone + ping) * np.clip(t / 0.002, 0, 1)
+
+
+def wave_event(dur, seed):
+    """One wave rolling in: a rumble that swells, crashes bright, then hisses away as foam."""
+    r = np.random.default_rng(seed)
+    t = t_of(dur)
+    n = len(t)
+    u = t / dur
+    swell = np.sin(np.pi * np.clip(u / 0.35, 0, 1) / 2) ** 2 * np.exp(-np.clip(t - 0.35 * dur, 0, None) / (0.3 * dur))
+    out = np.zeros((n, 2))
+    for ch in range(2):
+        noise = r.standard_normal(n)
+        wash = sweep_filter(noise, 220, 1600)
+        wash = np.where(u < 0.4, wash, sweep_filter(noise, 1600, 380))  # brightest as it breaks
+        foam = highpass(r.standard_normal(n), 3000) * np.clip((t - 0.3 * dur) / (0.15 * dur), 0, 1) * np.exp(-np.clip(t - 0.45 * dur, 0, None) / (0.2 * dur))
+        out[:, ch] = wash * swell + foam * 0.25
+    return out
+
+
+def gull(seed):
+    """A far-off gull: a few nasal 'kyow' calls gliding down."""
+    r = np.random.default_rng(seed)
+    out = np.zeros(int(1.8 * SR))
+    for k in range(3):
+        t = t_of(0.32 - 0.03 * k)
+        f0 = 1850 - 120 * k + r.random() * 60
+        f = f0 * (1 + 0.15 * np.sin(np.pi * t / t[-1])) - 500 * (t / t[-1]) ** 2
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        call = np.tanh(2.2 * np.sin(ph + 1.5 * np.sin(ph)))
+        call *= np.sin(np.pi * t / t[-1]) ** 0.6 * (1 + 0.3 * np.sin(2 * np.pi * 38 * t))
+        add(out, bandpass(call, 900, 4500), 0.05 + k * 0.45)
+    return out
 
 
 def music():
-    """Calm ambient loop: slow pads, drifting water-drop plucks with echoes, a soft bass
-    hum and faint surf. Gentle motion, no drums, no driving rhythm."""
-    r = np.random.default_rng(21)
+    """Island loop: ukulele strum, round bass, shaker, a steel drum tune, marimba and the sea.
+    Three passes of the C-Am-F-G turn: strum and sea; + steel drum; + marimba."""
+    r = np.random.default_rng(31)
     length = BARS * BAR
     n = int(length * SR)
-    full_n = n + int(6.0 * SR)  # room for the last notes to ring out; folded back onto the start
-    pad = np.zeros((full_n, 2))
-    drops = np.zeros((full_n, 2))
-    bells = np.zeros((full_n, 2))
+    full_n = n + int(6.0 * SR)  # room for tails; folded back onto the start
+    uke = np.zeros((full_n, 2))
     bass = np.zeros(full_n)
+    perc = np.zeros((full_n, 2))
+    lead = np.zeros((full_n, 2))
+    sea = np.zeros((full_n, 2))
 
-    # Pad: detuned saws, dark and slow, with an airy sine an octave up.
-    for c in range(BARS // 2):
-        chord = CHORDS[c % 4]
-        start = c * 2 * BAR
-        dur = 2 * BAR + 2.0
-        t = t_of(dur)
-        e = env_adsr(len(t), 1.8, 1.0, 0.85, 2.0)
-        for i, m in enumerate(chord):
-            voice = np.zeros((len(t), 2))
-            for d, p in ((-6, -0.6), (0, 0.0), (6, 0.6)):
-                f = hz(m) * 2 ** (d / 1200.0)
-                voice += pan(saw(f, t, r.random() * 6.28, top=3000), p)
-            for ch in range(2):
-                voice[:, ch] = lowpass(voice[:, ch], 1100)
-            air = pan(np.sin(2 * np.pi * hz(m + 12) * t + r.random() * 6.28), 0.5 - i * 0.25) * 0.25
-            add(pad, (voice + air) * e[:, None] * (0.09 if i else 0.06), start)
-    lfo = 0.8 + 0.2 * np.sin(2 * np.pi * np.arange(full_n) / SR / (2 * BAR) - np.pi / 2)
-    pad *= lfo[:, None]
+    strings = {}
+    for chord in UKE:
+        for m in chord:
+            for v in range(3):
+                strings.setdefault((m, v), pluck(hz(m), 2.2, seed=m * 10 + v))
 
-    # Drifting plucks: soft bell-like drops on the 8ths, with rests, wandering across the stereo field.
-    step = BEAT / 2
-    for k in range(int(length / step)):
-        bar = int(k * step / BAR)
-        if r.random() < (0.45 if bar < 8 else 0.3):
-            continue
-        notes = DRIFT[(bar // 2) % 4]
-        m = notes[r.integers(len(notes))]
-        vel = 0.35 + 0.3 * r.random() + (0.15 if k % 4 == 0 else 0.0)
-        t = t_of(1.2)
-        tone = fm(hz(m), t, 2.0, 0.7, 0.05) * np.exp(-t / 0.38) * np.clip(t / 0.004, 0, 1)
-        tone = lowpass(tone, 3800)
-        add(drops, pan(tone * vel * 0.16, np.sin(k * 0.37) * 0.6), k * step)
-    # Long, soft echoes trailing each drop.
-    delay = int(BEAT * 0.75 * SR)
-    echo = np.zeros_like(drops)
-    for k in range(1, 6):
-        shifted = np.zeros_like(drops)
-        shifted[delay * k:] = drops[: full_n - delay * k]
-        echo += (shifted[:, ::-1] if k % 2 else shifted) * (0.45 ** k)
-    for ch in range(2):
-        echo[:, ch] = lowpass(echo[:, ch], 2400)
-    drops = drops + echo
+    for b in range(BARS):
+        chord = UKE[(b // 2) % 4]
+        for beat, down, vel in STRUM:
+            at = max(b * BAR + beat * BEAT + r.normal(0, 0.006), 0.0)
+            order = chord if down else chord[::-1][:3]  # up strums catch the top strings
+            gap = 0.016 if down else 0.011
+            for i, m in enumerate(order):
+                s = strings[(m, int(r.integers(3)))] * vel * (0.85 + 0.3 * r.random())
+                # Strings fan out across the stereo field a little.
+                add(uke, pan(s * 0.2, -0.35 + 0.23 * chord.index(m)), at + i * gap)
 
-    # Bass: a quiet hum on each chord root.
-    for c in range(BARS // 2):
-        t = t_of(2 * BAR + 1.5)
-        f = hz(CHORDS[c % 4][0] - 12)
-        tone = np.sin(2 * np.pi * f * t) + 0.15 * np.sin(4 * np.pi * f * t)
-        add(bass, tone * env_adsr(len(t), 1.2, 0.5, 0.9, 1.5) * 0.16, c * 2 * BAR)
+        # Bass: root on 1, fifth on 3, a passing note on the "and" of 4.
+        root = ROOTS[(b // 2) % 4]
+        for beat, m, length_b in [(0, root, 1.5), (2, root + 7, 1.25), (3.5, root + (12 if b % 2 == 0 else 5), 0.5)]:
+            t = t_of(length_b * BEAT + 0.15)
+            f = hz(m)
+            tone = np.sin(2 * np.pi * f * t) + 0.3 * np.sin(4 * np.pi * f * t) * np.exp(-t / 0.1)
+            tone *= np.exp(-t / 0.7) * env_adsr(len(t), 0.008, 0.05, 1.0, 0.12)
+            add(bass, tone * 0.24, b * BAR + beat * BEAT)
 
-    # Bells: a handful of long, soft notes over the middle pass only.
-    for c in range(4, 8):
-        start = c * 2 * BAR
-        for off, m, beats in BELLS[c % 4]:
-            dur = beats * BEAT + 2.5
-            t = t_of(dur)
-            vib = 1.0 + 0.003 * np.sin(2 * np.pi * 4.5 * t) * np.clip(t / 0.8, 0, 1)
-            tone = fm(hz(m) * vib, t, 1.0, 0.8, 0.5)
-            tone *= env_adsr(len(t), 0.08, 0.6, 0.5, 2.5, hold=beats * BEAT)
-            add(bells, pan(tone * 0.09, -0.2), start + off * BEAT)
+        # Shaker on the 8ths (laid back, slightly swung) and a soft hand drum.
+        for e in range(8):
+            at = b * BAR + e * BEAT / 2 + (0.035 if e % 2 else 0.0)
+            t = t_of(0.09)
+            sh = bandpass(r.standard_normal(len(t)), 5000, 11000) * np.sin(np.pi * np.clip(t / 0.07, 0, 1)) ** 2
+            add(perc, pan(sh * (0.12 if e % 2 else 0.07), 0.35), at)
+        for beat, f, v in [(1.5, 210, 0.5), (3.0, 160, 0.6), (3.5, 210, 0.35)]:
+            t = t_of(0.3)
+            drum = np.sin(2 * np.pi * f * (1 + 0.15 * np.exp(-t / 0.01)) * t) * np.exp(-t / 0.09)
+            drum += bandpass(r.standard_normal(len(t)), 800, 3000) * np.exp(-t / 0.008) * 0.3
+            add(perc, pan(drum * v * 0.22, -0.3), b * BAR + beat * BEAT)
 
-    # Faint surf: filtered noise swelling slowly, like waves on a far shore.
-    # The loop is a whole number of swells and each starts silent, so the seam is clean.
-    surf = lowpass(r.standard_normal(full_n), 500)
-    swell = 0.5 + 0.5 * np.sin(2 * np.pi * np.arange(full_n) / SR / (BAR * 1.5) - np.pi / 2)
-    swell[n:] = 0.0
-    surf = np.stack([surf, np.roll(surf, int(0.013 * SR))], axis=1) * (swell ** 2)[:, None] * 0.05
+    # Steel drum tune on the second and third pass (with a little echo, played a bit loose).
+    for c in range(4, 12):
+        for off, m, beats in TUNE[c % 4]:
+            if c >= 8 and off >= 4:
+                continue  # last pass: only the first half of each phrase, the marimba answers
+            note = steel_pan(hz(m), beats * BEAT + 1.0) * 0.17
+            add(lead, pan(note, 0.15), c * 2 * BAR + off * BEAT + r.normal(0, 0.008))
+    # Marimba rolling broken chords on the last pass.
+    for b in range(16, BARS):
+        notes = MARIMBA[(b // 2) % 4]
+        for e in range(8):
+            if r.random() < 0.3:
+                continue
+            m = notes[[0, 2, 1, 3, 2, 1, 3, 2][e]] + 12
+            add(lead, pan(marimba(hz(m), 0.8) * 0.11 * (1.0 if e % 2 == 0 else 0.7), -0.4), b * BAR + e * BEAT / 2)
 
-    mix = pad + drops + bells + pan(lowpass(bass, 400), 0.0) + surf
-    ir = reverb_ir(3.8, damp=4000)
-    send = pad * 0.7 + drops * 0.7 + bells * 0.9
+    # The sea: waves every few seconds plus a constant low surf, and two distant gulls.
+    at = 0.0
+    k = 0
+    while at < length:
+        dur = 5.5 + r.random() * 2.5
+        add(sea, wave_event(dur, seed=100 + k) * (0.09 + 0.04 * r.random()), at)
+        at += dur * (0.75 + 0.2 * r.random())
+        k += 1
+    # Constant surf, crossfaded over its own seam so the loop point is silent.
+    rumble = np.stack([lowpass(r.standard_normal(full_n), 260), lowpass(r.standard_normal(full_n), 260)], axis=1)
+    fade = int(2.0 * SR)
+    ramp = np.linspace(0.0, 1.0, fade)[:, None]
+    rumble[:fade] = rumble[:fade] * ramp + rumble[n:n + fade] * (1.0 - ramp)
+    sea[:n] += rumble[:n] * 0.045
+    for at, s, p in [(9.5, 1, -0.7), (44.0, 2, 0.6)]:
+        add(sea, pan(gull(s) * 0.035, p), at)
+
+    mix = uke + pan(lowpass(bass, 700), 0.0) + perc + lead + sea
+    ir = reverb_ir(1.9, damp=5000)
+    send = uke * 0.35 + lead * 0.6 + perc * 0.2 + sea * 0.3
     wet = reverb(send, ir, 1.0) - np.pad(send, ((0, len(ir) - 1), (0, 0)))
     full = np.zeros((full_n + len(ir) - 1, 2))
     full[:full_n] += mix
-    full += wet * 0.45
+    full += wet * 0.3
     # Fold the tail onto the start: a seamless loop.
     out = full[:n].copy()
     tail = full[n:]
