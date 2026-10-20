@@ -94,6 +94,19 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 	queue_redraw()
 
 
+## Scales the finished shape about the centre (the level layout stays as generated).
+func grow(f: float) -> void:
+	poly = poly * Transform2D(0.0, Vector2.ZERO).scaled(Vector2(f, f))
+	_inner = _inner * Transform2D(0.0, Vector2.ZERO).scaled(Vector2(f, f))
+	for n in _deco.size():
+		_deco[n] *= f
+	radius_max *= f
+	_shallow_far = _offset(poly, 22.0)
+	_shallow_near = _offset(poly, 11.0)
+	_foam = _offset(poly, 3.0)
+	queue_redraw()
+
+
 ## Makes the island sway sideways around its current x. Call after it is positioned.
 func setup_motion(phase: float, vertical := false) -> void:
 	amp = SWAY_AMP

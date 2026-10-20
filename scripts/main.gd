@@ -12,7 +12,7 @@ const GRAB_RADIUS := 90.0
 const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
 const ICE_SCALE := 1.1
-const EDGE_MARGIN := 20.0  # islands closer than this to the screen edge get nudged inwards
+const EDGE_NUDGE := [25, 36, 70]  # islands that sat too close to the screen edge
 const GRASS_DECEL := 3200.0
 const LEVEL_SEED := 99
 const LEVEL_ATTEMPTS := 60
@@ -167,7 +167,7 @@ func _build_level() -> void:
 			if kind == Land.Kind.MOVING:
 				gap += Land.SWAY_AMP  # it sways towards its neighbours, keep the closest approach as wide
 			if kind == Land.Kind.ICE:
-				radius = maxf(radius, 72.0) * ICE_SCALE  # ice is hard enough to stop on
+				radius = maxf(radius, 72.0)  # ice is hard enough to stop on
 			if last:
 				radius = 80.0  # the goal island: plain, full size, centred
 				ang = atan2(-1.0, 0.0)
@@ -194,9 +194,6 @@ func _build_level() -> void:
 				lo += Land.SWAY_AMP + 4.0
 				hi -= Land.SWAY_AMP + 4.0
 			next.x = clampf(next.x, lo, hi)
-			var edge := minf(next.x - l.radius_max, 540.0 - next.x - l.radius_max)
-			if edge < EDGE_MARGIN:
-				next.x += signf(270.0 - next.x) * 0.4 * l.radius_max  # 20% of the island's width
 			if last:
 				next.x = 270.0
 			l.position = next
@@ -210,6 +207,12 @@ func _build_level() -> void:
 			if _is_solvable(prev, l):
 				break
 		_add_land(l)
+	for l in lands:
+		if l.kind == Land.Kind.ICE:
+			l.grow(ICE_SCALE)
+	for i in EDGE_NUDGE:
+		var l: Land = lands[i]
+		l.position.x += signf(270.0 - l.position.x) * 0.4 * l.radius_max  # 20% of the island's width
 
 
 func _make_land(i: int, kind: Land.Kind, at: Vector2, radius: float, aspect: float, rot: float, belt_sign: float) -> Land:
