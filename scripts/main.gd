@@ -36,6 +36,8 @@ const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const LeaderboardView := preload("res://scripts/ui/leaderboard_view.gd")
 const Congrats := preload("res://scripts/ui/congrats.gd")
 const Fireworks := preload("res://scripts/fireworks.gd")
+const GameOver := preload("res://scripts/ui/game_over.gd")
+const MockAd := preload("res://scripts/ui/mock_ad.gd")
 
 var state := State.AIM
 var lands: Array[Land] = []
@@ -67,6 +69,9 @@ var _place_from := Vector2.ZERO
 var _place_cam := 0.0
 var _place_moved := false
 var _place_near := -1
+var _place_target := 0.0  # where the drag wants the camera; _free_y glides after it
+var _place_vel := 0.0  # fling speed after letting go, px/s
+var _place_last_t := 0.0
 var drops := 0  # life drops collected towards the next life
 var radar_time := 0.0  # seconds of pickup radar left
 var _drops_hold := 0.0  # keeps a full counter on screen for a moment after the life is added
@@ -470,14 +475,13 @@ func _input(event: InputEvent) -> void:
 	if state == State.WON:
 		return  # fireworks, then the congratulations window
 	if placing and event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
-		_free_y = _clamp_free_y(_free_y + (-60.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 60.0))
+		_place_vel = 0.0
+		_place_target = _clamp_free_y(_place_target + (-90.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 90.0))
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if _hud.board_rect().has_point(event.position):
 				_open_board()
-			elif state == State.OVER:
-				_restart()
 			elif show_tools and _hud.place_rect().has_point(event.position):
 				_set_placing(not placing)
 			elif show_tools and _hud.radar_rect().has_point(event.position):
@@ -492,7 +496,9 @@ func _input(event: InputEvent) -> void:
 				_place_down = true
 				_place_moved = false
 				_place_from = event.position
-				_place_cam = _free_y
+				_place_cam = _place_target
+				_place_vel = 0.0
+				_place_last_t = Time.get_ticks_msec() / 1000.0
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
 				_dragging = true
 				_drag = Vector2.ZERO
@@ -500,6 +506,8 @@ func _input(event: InputEvent) -> void:
 			_place_down = false
 			if not _place_moved:
 				_place_at(event.position)
+			elif Time.get_ticks_msec() / 1000.0 - _place_last_t > 0.08:
+				_place_vel = 0.0  # held still before letting go: no fling
 		elif _dragging:
 			_update_drag()
 			_dragging = false
@@ -513,7 +521,13 @@ func _input(event: InputEvent) -> void:
 		if absf(dy) > 12.0:
 			_place_moved = true
 		if _place_moved:
-			_free_y = _clamp_free_y(_place_cam - dy)
+			var target := _clamp_free_y(_place_cam - dy)
+			var now := Time.get_ticks_msec() / 1000.0
+			var dt := maxf(now - _place_last_t, 0.001)
+			# Smoothed finger speed, used for the fling when the finger lifts.
+			_place_vel = lerpf(_place_vel, (target - _place_target) / dt, 0.4)
+			_place_last_t = now
+			_place_target = target
 	elif event is InputEventMouseMotion and _dragging:
 		_update_drag()
 
@@ -524,8 +538,10 @@ func _set_placing(on: bool) -> void:
 	_place_down = false
 	_cam.position_smoothing_enabled = not on  # scrolling follows the finger exactly
 	_place_near = -1
+	_place_vel = 0.0
 	if on:
 		_free_y = _cam.get_screen_center_position().y
+		_place_target = _free_y
 		_dragging = false
 		_drag = Vector2.ZERO
 	else:
@@ -554,7 +570,7 @@ func _place_at(screen: Vector2) -> void:
 			return
 
 
-## Island 100: a fanfare and fireworks, then the congratulations window.
+## The last island: a fanfare and fireworks, then the congratulations window.
 func _win() -> void:
 	state = State.WON
 	_sound.play("win")
@@ -620,6 +636,11 @@ func _process(delta: float) -> void:
 	if state != State.OVER and state != State.WON and not _modal_open():
 		_run_ms += delta * 1000.0
 	if placing:
+		# Glide after the finger (and coast after a fling) instead of jumping per touch event.
+		if not _place_down:
+			_place_target = _clamp_free_y(_place_target + _place_vel * delta)
+			_place_vel *= exp(-4.0 * delta)
+		_free_y = lerpf(_free_y, _place_target, 1.0 - exp(-22.0 * delta))
 		# Islands near the view come alive while scrolling.
 		var near := 0
 		for l in lands:
@@ -690,6 +711,8 @@ func _process(delta: float) -> void:
 		_fx.aim_to = _bubble.position - _drag.normalized() * (_drag.length() / MAX_DRAG) * MAX_RANGE
 
 	_cam.position = _cam_target()
+	if placing:
+		_cam.force_update_scroll()  # water and islands move together in the same frame
 	_critters.focus = _bubble.position
 	var view := get_viewport_rect().size
 	var top_left := _cam.get_screen_center_position() - view / 2.0
@@ -699,9 +722,6 @@ func _process(delta: float) -> void:
 
 	var title := ""
 	var sub := ""
-	if state == State.OVER:
-		title = "Splash!"
-		sub = "Tap to try again"
 	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids, placing)
 	_hud.set_pickups(drops, radar_time, 1.0 - _drops_hold / 0.8 if _drops_hold > 0.0 else 0.0)
 	_hud.set_info(best, lives, title, sub)
@@ -838,7 +858,33 @@ func _start_fall() -> void:
 func _after_fall() -> void:
 	if lives <= 0:
 		state = State.OVER
+		_show_game_over()
 		return
+	_respawn()
+
+
+## Out of lives: watch an ad for one more life, or start over.
+func _show_game_over() -> void:
+	var g := GameOver.new(best, TOTAL_JUMPS)
+	g.watch_ad.connect(_show_ad)
+	g.retry.connect(_restart)
+	_modals.add_child(g)
+
+
+## A rewarded ad (a 2 s stand-in for now); when it has played, one more life and the run
+## carries on from the island it stopped on. The game is silent while the ad plays.
+func _show_ad() -> void:
+	var ad := MockAd.new()
+	AudioServer.set_bus_mute(0, true)
+	ad.rewarded.connect(func():
+		AudioServer.set_bus_mute(0, false)
+		lives += 1
+		_respawn())
+	_modals.add_child(ad)
+
+
+## Back on the spot it last landed on.
+func _respawn() -> void:
 	_bubble.reset()
 	_bubble.position = _spawn_pos
 	var home := lands[cur]

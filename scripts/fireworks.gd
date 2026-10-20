@@ -1,5 +1,5 @@
 extends Node2D
-## Fireworks over the screen when island 100 is reached: rockets climb with a sparkling trail
+## Fireworks over the screen when the bubble lands on the last island: rockets climb with a sparkling trail
 ## and burst into rings of falling, twinkling stars. Drawn in screen space (UI layer).
 ## `finished` fires once the show has had its moment; the last sparks keep fading after it.
 

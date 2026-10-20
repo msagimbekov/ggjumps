@@ -1,5 +1,5 @@
 extends Node
-## Leaderboard client: everyone who reached the 100th island, with their run time.
+## Leaderboard client: everyone who made it across all the islands, with their run time.
 ##
 ## Uses the Supabase table `ggjumps_leaderboard` (in the ggcuts project; schema and access
 ## rules in supabase/leaderboard.sql) through Supabase's REST API with the project's

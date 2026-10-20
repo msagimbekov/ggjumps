@@ -1,5 +1,5 @@
 extends "res://scripts/ui/modal.gd"
-## Shown after the fireworks on island 100: the run time, and an offer to join the
+## Shown after the fireworks on the last island: the run time, and an offer to join the
 ## leaderboard with a name (at most 10 characters). `saved(id)` once the entry is stored,
 ## `skipped` when the player declines.
 
@@ -21,7 +21,7 @@ func _init(api: LeaderboardApi, ms: int) -> void:
 	_api = api
 	_ms = ms
 	var line := Label.new()
-	line.text = "You reached island 100 in"
+	line.text = "You crossed all the islands in"
 	content.add_child(line)
 	var time := Label.new()
 	time.text = LeaderboardApi.format_time(ms)

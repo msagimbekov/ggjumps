@@ -1,5 +1,5 @@
 extends "res://scripts/ui/modal.gd"
-## The leaderboard window: everyone who reached the 100th island, fastest first, with their
+## The leaderboard window: everyone who made it across all the islands, fastest first, with their
 ## time and date. Entries from this device have a mint name and a tint; `highlight` (a just-saved entry) is
 ## scrolled into view.
 
@@ -18,7 +18,7 @@ func _init(api: LeaderboardApi, highlight := "") -> void:
 	_api = api
 	_highlight = highlight
 	var sub := Label.new()
-	sub.text = "Everyone who reached island 100"
+	sub.text = "Everyone who made it across all the islands"
 	sub.theme_type_variation = "MutedLabel"
 	content.add_child(sub)
 	_scroll = ScrollContainer.new()
@@ -63,7 +63,7 @@ func _load() -> void:
 		_retry.visible = true
 		return
 	if entries.is_empty():
-		_status.text = "Nobody has reached island 100 yet.\nBe the first!"
+		_status.text = "Nobody has made it across yet.\nBe the first!"
 		return
 	_status.visible = false
 	var target: Control

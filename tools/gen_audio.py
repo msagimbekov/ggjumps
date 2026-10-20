@@ -529,7 +529,7 @@ def fw_burst():
 
 
 def win():
-    """Reaching island 100: a bright rising steel-drum flourish."""
+    """Reaching the last island: a bright rising steel-drum flourish."""
     out = np.zeros((int(2.8 * SR), 2))
     for k, m in enumerate([72, 76, 79, 84, 88, 91]):
         add(out, pan(steel_pan(hz(m), 2.0) * (0.6 + 0.08 * k), -0.4 + 0.16 * k), k * 0.09)

@@ -88,10 +88,10 @@ func setup(i: int, k: Kind, radius: float, aspect: float, rot: float, seed_value
 		Kind.TREADMILL:
 			_rim_color = Color(0.55, 0.36, 0.20)
 			_fill_color = Color(0.36, 0.66, 0.32)
-		Kind.MOVING:
-			_rim_color = Color(0.36, 0.38, 0.43)
-			_fill_color = Color(0.60, 0.62, 0.66)
-			_deco_color = Color(0.40, 0.42, 0.47)
+		Kind.MOVING:  # drifting sandbank: all beach sand, a shade darker at the edge
+			_rim_color = Color(0.84, 0.73, 0.48)
+			_fill_color = Color(0.93, 0.85, 0.60)
+			_deco_color = Color(0.80, 0.68, 0.43, 0.75)
 	queue_redraw()
 
 
@@ -233,15 +233,19 @@ func _draw_belt() -> void:
 
 
 func _draw_sway() -> void:
-	# Rock: a lighter, lumpy top, cracks and pits.
+	# Sandbank: a sunlit top, wind ripples in the sand and the odd pebble or shell.
 	var top := PackedVector2Array()
 	for p in _inner:
 		top.append(p * 0.78 + Vector2(-4, -5))
-	draw_colored_polygon(top, Color(0.72, 0.74, 0.78, 0.55))
-	for c in _deco:
-		draw_line(c, c + Vector2(10, -4), _deco_color, 2.0)
-		draw_line(c + Vector2(5, -2), c + Vector2(8, 5), _deco_color, 2.0)
-		draw_circle(c + Vector2(-7, 6), 3.5, Color(0.45, 0.47, 0.52, 0.7))
+	draw_colored_polygon(top, Color(1.0, 0.95, 0.78, 0.45))
+	for i in _deco.size():
+		var c := _deco[i]
+		for k in 2:
+			var o := c + Vector2(0, k * 6.0)
+			draw_polyline(PackedVector2Array([o + Vector2(-9, 1), o + Vector2(-3, -2), o + Vector2(3, 0), o + Vector2(9, -2)]), _deco_color, 2.0, true)
+		if i % 3 == 0:
+			draw_circle(c + Vector2(-8, 9), 2.6, Color(0.98, 0.93, 0.85))
+			draw_arc(c + Vector2(-8, 9), 2.6, 0.0, TAU, 10, Color(0.80, 0.66, 0.50, 0.8), 1.0, true)
 
 
 ## Finish flag: a pole planted on the island with a waving chequered flag.

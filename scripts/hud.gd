@@ -167,7 +167,11 @@ func _draw() -> void:
 		draw_arc(nc, 13.0 + 22.0 * (1.0 - _life_flash), 0.0, TAU, 32, Color(1, 1, 1, _life_flash), 3.0)
 
 	# Collected bubbles: three slots that fill in, then melt into one big bubble; radar countdown next to them while it runs.
-	var slots := Rect2(18, top + 84.0, 8.0 + DROPS_SLOTS * 36.0, 44.0)
+	# Centred in the gap between the score and the lives pills (with the radar countdown, as a group).
+	var slots_w := 8.0 + DROPS_SLOTS * 36.0
+	var group_w := slots_w + (54.0 if radar_left > 0.0 else 0.0)
+	var gap_mid := (pill.end.x + lp.position.x) * 0.5
+	var slots := Rect2(gap_mid - group_w * 0.5, top + 4.0, slots_w, 44.0)
 	draw_style_box(_pill, slots)
 	var mid := Vector2(slots.get_center().x, slots.get_center().y)
 	for i in DROPS_SLOTS:
@@ -248,18 +252,16 @@ func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 			draw_circle(c + Vector2(0, -5), 3.5, Color(0.02, 0.14, 0.26))
 
 
-## Gold cup with handles on a little stand.
+## Cup with handles on a little stand, in the same soft white as the settings gear.
 func _trophy(c: Vector2) -> void:
-	var gold := Color(1.0, 0.82, 0.25)
-	var dark := Color(0.80, 0.55, 0.10)
-	draw_arc(c + Vector2(-10, -6), 6.0, PI * 0.5, PI * 1.5, 12, gold, 3.0, true)
-	draw_arc(c + Vector2(10, -6), 6.0, -PI * 0.5, PI * 0.5, 12, gold, 3.0, true)
+	var col := Color(1, 1, 1, 0.85)
+	draw_arc(c + Vector2(-10, -6), 6.0, PI * 0.5, PI * 1.5, 12, col, 3.0, true)
+	draw_arc(c + Vector2(10, -6), 6.0, -PI * 0.5, PI * 0.5, 12, col, 3.0, true)
 	draw_colored_polygon(PackedVector2Array([
 		c + Vector2(-11, -14), c + Vector2(11, -14), c + Vector2(9, -2), c + Vector2(4, 4), c + Vector2(-4, 4), c + Vector2(-9, -2),
-	]), gold)
-	draw_rect(Rect2(c + Vector2(-2.5, 4), Vector2(5, 6)), dark)
-	draw_rect(Rect2(c + Vector2(-9, 10), Vector2(18, 5)), gold)
-	draw_line(c + Vector2(-5, -11), c + Vector2(-4, -3), Color(1, 1, 1, 0.7), 2.0, true)
+	]), col)
+	draw_rect(Rect2(c + Vector2(-2.5, 4), Vector2(5, 6)), col)
+	draw_rect(Rect2(c + Vector2(-9, 10), Vector2(18, 5)), col)
 
 
 func _text(font: Font, pos: Vector2, s: String, fs: int, col: Color) -> void:
