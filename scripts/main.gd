@@ -31,6 +31,12 @@ const HIDE_TAPS := 3  # taps that hide them again and reset the tools
 
 enum State { AIM, FLY, SLIDE, FALL, OVER, WON }
 
+# Preloaded by path, not class_name: new global classes would change the OTA build shape.
+const LeaderboardApi := preload("res://scripts/leaderboard.gd")
+const LeaderboardView := preload("res://scripts/ui/leaderboard_view.gd")
+const Congrats := preload("res://scripts/ui/congrats.gd")
+const Fireworks := preload("res://scripts/fireworks.gd")
+
 var state := State.AIM
 var lands: Array[Land] = []
 var cur := 0  # land the bubble last settled on
@@ -49,6 +55,18 @@ var _hud: Hud
 var _sound: Sound
 var _settings: SettingsPanel
 var _radar_ping := 0.0
+var _board: LeaderboardApi
+var _modals: CanvasLayer  # windows (settings, leaderboard, congratulations) open in here
+var _fireworks: Fireworks
+var _run_ms := 0.0  # play time of this run, paused while a window is open
+## Tools: place-the-bubble mode. Drag scrolls the whole level, a tap on an island puts the bubble there.
+var placing := false
+var _free_y := 0.0  # camera y while placing
+var _place_down := false
+var _place_from := Vector2.ZERO
+var _place_cam := 0.0
+var _place_moved := false
+var _place_near := -1
 var drops := 0  # life drops collected towards the next life
 var radar_time := 0.0  # seconds of pickup radar left
 var _drops_hold := 0.0  # keeps a full counter on screen for a moment after the life is added
@@ -143,6 +161,21 @@ func _build_nodes() -> void:
 		var safe := DisplayServer.get_display_safe_area()
 		var bottom := float(DisplayServer.screen_get_size().y - safe.end.y)
 		_settings.bottom_inset = maxf(bottom, 0.0) * get_viewport_rect().size.y / win_h
+		_hud.bottom_inset = _settings.bottom_inset
+
+	_board = LeaderboardApi.new()
+	add_child(_board)
+	var show := CanvasLayer.new()
+	show.layer = 15
+	add_child(show)
+	_fireworks = Fireworks.new()
+	_fireworks.play_sound = _sound.play
+	_fireworks.finished.connect(_show_congrats)
+	show.add_child(_fireworks)
+	_modals = CanvasLayer.new()
+	_modals.layer = 20
+	add_child(_modals)
+	_settings.modal_parent = _modals
 
 
 ## Same layout on every device: one seeded RNG, always drawing the same numbers per attempt.
@@ -364,6 +397,8 @@ func verify_levels() -> Array:
 
 func _restart() -> void:
 	lives = START_LIVES
+	_run_ms = 0.0
+	_set_placing(false)
 	cur = 0
 	best = 0
 	_dragging = false
@@ -392,14 +427,20 @@ func _remember_spot() -> void:
 
 
 func _activate() -> void:
+	_activate_around(cur)
+
+
+func _activate_around(center: int) -> void:
 	for l in lands:
-		var near := absi(l.index - cur) <= 6
+		var near := absi(l.index - center) <= 6
 		l.set_process(near)
 		if l.pickup:
 			l.pickup.set_process(near)
 
 
 func _cam_target() -> Vector2:
+	if placing:
+		return Vector2(270.0, _free_y)
 	var focus := lands[cur].position
 	if state == State.FLY or state == State.SLIDE:
 		focus = _bubble.position
@@ -414,17 +455,31 @@ func _land_at(p: Vector2) -> Land:
 	return null
 
 
+func _modal_open() -> bool:
+	return _modals.get_child_count() > 0
+
+
 func _input(event: InputEvent) -> void:
-	if _settings.handle(event):
-		if _dragging and event is InputEventMouseButton and not event.pressed:
-			_dragging = false  # a jump drag that ended on the settings is cancelled
+	if _modal_open() or _settings.handle(event):
+		if _dragging:
+			_dragging = false  # a jump drag interrupted by a window is cancelled
 			_drag = Vector2.ZERO
 			_bubble.pull = Vector2.ZERO
+		_place_down = false
+		return
+	if state == State.WON:
+		return  # fireworks, then the congratulations window
+	if placing and event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		_free_y = _clamp_free_y(_free_y + (-60.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 60.0))
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			if state == State.OVER or state == State.WON:
+			if _hud.board_rect().has_point(event.position):
+				_open_board()
+			elif state == State.OVER:
 				_restart()
+			elif show_tools and _hud.place_rect().has_point(event.position):
+				_set_placing(not placing)
 			elif show_tools and _hud.radar_rect().has_point(event.position):
 				debug_aim = not debug_aim
 			elif show_tools and _hud.keep_rect().has_point(event.position):
@@ -433,9 +488,18 @@ func _input(event: InputEvent) -> void:
 				_set_ids(not show_ids)
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
+			elif placing:
+				_place_down = true
+				_place_moved = false
+				_place_from = event.position
+				_place_cam = _free_y
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
 				_dragging = true
 				_drag = Vector2.ZERO
+		elif _place_down:
+			_place_down = false
+			if not _place_moved:
+				_place_at(event.position)
 		elif _dragging:
 			_update_drag()
 			_dragging = false
@@ -444,8 +508,73 @@ func _input(event: InputEvent) -> void:
 			_bubble.pull = Vector2.ZERO
 			if state == State.AIM and v.length() >= MIN_DRAG:
 				_jump(v)
+	elif event is InputEventMouseMotion and _place_down:
+		var dy: float = event.position.y - _place_from.y
+		if absf(dy) > 12.0:
+			_place_moved = true
+		if _place_moved:
+			_free_y = _clamp_free_y(_place_cam - dy)
 	elif event is InputEventMouseMotion and _dragging:
 		_update_drag()
+
+
+## Tools: place-the-bubble mode on / off. On, the camera stops following the bubble.
+func _set_placing(on: bool) -> void:
+	placing = on
+	_place_down = false
+	_cam.position_smoothing_enabled = not on  # scrolling follows the finger exactly
+	_place_near = -1
+	if on:
+		_free_y = _cam.get_screen_center_position().y
+		_dragging = false
+		_drag = Vector2.ZERO
+	else:
+		_activate()
+
+
+func _clamp_free_y(y: float) -> float:
+	var off := get_viewport_rect().size.y * 0.2
+	return clampf(y, lands[TOTAL_JUMPS].position.y - off, lands[0].position.y - off)
+
+
+## Puts the bubble where the island was tapped and carries on from there (that island counts
+## as reached). The 100th island starts the finish.
+func _place_at(screen: Vector2) -> void:
+	var world := get_canvas_transform().affine_inverse() * screen
+	for l in lands:
+		if l.contains_world(world):
+			_set_placing(false)
+			_fx.tail_on = false
+			_bubble.reset()
+			_bubble.position = world
+			best = l.index
+			state = State.AIM
+			_settle(l)
+			_cam.reset_smoothing()
+			return
+
+
+## Island 100: a fanfare and fireworks, then the congratulations window.
+func _win() -> void:
+	state = State.WON
+	_sound.play("win")
+	_fireworks.start()
+
+
+func _show_congrats() -> void:
+	var c := Congrats.new(_board, int(_run_ms))
+	c.saved.connect(func(id: String): _open_board(id, true))
+	c.skipped.connect(_restart)
+	_modals.add_child(c)
+
+
+## The leaderboard window; `highlight` marks a just-saved entry. After a finish, closing it
+## starts a new run.
+func _open_board(highlight := "", restart_after := false) -> void:
+	var v := LeaderboardView.new(_board, highlight)
+	if restart_after:
+		v.closed.connect(_restart)
+	_modals.add_child(v)
 
 
 func _set_ids(on: bool) -> void:
@@ -466,6 +595,7 @@ func _tap_lives() -> void:
 	if show_tools and _aim_taps >= HIDE_TAPS:
 		_aim_taps = 0
 		show_tools = false
+		_set_placing(false)
 		debug_aim = false
 		keep_lives = false
 		_set_ids(false)
@@ -487,6 +617,17 @@ func _jump(v: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	if state != State.OVER and state != State.WON and not _modal_open():
+		_run_ms += delta * 1000.0
+	if placing:
+		# Islands near the view come alive while scrolling.
+		var near := 0
+		for l in lands:
+			if absf(l.position.y - _free_y) < absf(lands[near].position.y - _free_y):
+				near = l.index
+		if near != _place_near:
+			_place_near = near
+			_activate_around(near)
 	for l in _movers:
 		l.set_motion_time(_time)
 	match state:
@@ -561,10 +702,7 @@ func _process(delta: float) -> void:
 	if state == State.OVER:
 		title = "Splash!"
 		sub = "Tap to try again"
-	elif state == State.WON:
-		title = "All %d jumps!" % TOTAL_JUMPS
-		sub = "Tap to play again"
-	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids)
+	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids, placing)
 	_hud.set_pickups(drops, radar_time, 1.0 - _drops_hold / 0.8 if _drops_hold > 0.0 else 0.0)
 	_hud.set_info(best, lives, title, sub)
 
@@ -610,7 +748,10 @@ func _settle(l: Land) -> void:
 	_fx.ring(_bubble.position, 44.0, Color(1, 1, 1, 0.7), 0.5)
 	if cur > best:
 		best = cur
-	state = State.WON if best >= TOTAL_JUMPS else State.AIM
+	if best >= TOTAL_JUMPS:
+		_win()
+	else:
+		state = State.AIM
 
 
 ## Landing on a pickup collects it; settling anywhere else on its island makes it vanish.

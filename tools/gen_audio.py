@@ -497,6 +497,47 @@ def sonar(sweep):
     return reverb(st + echo, reverb_ir(1.2, damp=5000, seed=8), 0.25)[:n]
 
 
+def fw_launch():
+    """A rocket going up: a rising airy whistle."""
+    r = np.random.default_rng(41)
+    t = t_of(0.9)
+    n = len(t)
+    env = np.sin(np.pi * np.clip(t / 0.9, 0, 1)) ** 1.5
+    hiss = sweep_filter(r.standard_normal(n), 900, 5000) * env * 0.5
+    f = 900 * (2.6 ** (t / 0.9))
+    whistle = np.sin(2 * np.pi * np.cumsum(f) / SR) * env * 0.12
+    return reverb(pan(hiss + whistle, 0.0), reverb_ir(1.2, damp=6000, seed=42), 0.25)
+
+
+def fw_burst():
+    """A firework bursting far away: a soft boom, then a long glittering crackle."""
+    r = np.random.default_rng(43)
+    t = t_of(2.2)
+    n = len(t)
+    boom = lowpass(r.standard_normal(n), 380) * np.exp(-t / 0.22) * np.clip(t / 0.004, 0, 1) * 2.2
+    boom += np.sin(2 * np.pi * 55 * t) * np.exp(-t / 0.25) * 0.5
+    x = boom
+    for k in range(160):
+        at = 0.15 + r.exponential(0.35)
+        if at > 1.9:
+            continue
+        ct = t_of(0.006)
+        click = highpass(r.standard_normal(len(ct)), 2500) * np.exp(-ct / 0.0012)
+        add(x, click * (0.05 + 0.12 * r.random()) * np.exp(-at / 0.8), at)
+    st = np.stack([x, x], axis=1)
+    return reverb(st, reverb_ir(2.0, damp=4000, seed=44), 0.35)
+
+
+def win():
+    """Reaching island 100: a bright rising steel-drum flourish."""
+    out = np.zeros((int(2.8 * SR), 2))
+    for k, m in enumerate([72, 76, 79, 84, 88, 91]):
+        add(out, pan(steel_pan(hz(m), 2.0) * (0.6 + 0.08 * k), -0.4 + 0.16 * k), k * 0.09)
+    for m in [84, 88, 91, 96]:
+        add(out, pan(steel_pan(hz(m), 2.2) * 0.35, 0.0), 0.62)
+    return reverb(out, reverb_ir(1.6, damp=7000, seed=45), 0.25)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     write("splash.wav", splash(), 0.95)
@@ -507,6 +548,10 @@ def main():
     write("radar_on.wav", sonar(True), 0.8)
     write("radar_ping.wav", sonar(False), 0.6)
     write("music.ogg", music(), 0.8)
+    # After the music, so adding effects here never changes the music render.
+    write("fw_launch.wav", fw_launch(), 0.6)
+    write("fw_burst.wav", fw_burst(), 0.9)
+    write("win.wav", win(), 0.85)
 
 
 if __name__ == "__main__":

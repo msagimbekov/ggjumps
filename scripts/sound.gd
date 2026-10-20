@@ -12,8 +12,11 @@ const SFX := {
 	"drop": preload("res://audio/drop.wav"),
 	"radar_on": preload("res://audio/radar_on.wav"),
 	"radar_ping": preload("res://audio/radar_ping.wav"),
+	"fw_launch": preload("res://audio/fw_launch.wav"),
+	"fw_burst": preload("res://audio/fw_burst.wav"),
+	"win": preload("res://audio/win.wav"),
 }
-const VOICES := 6  # effects that can overlap
+const VOICES := 10  # effects that can overlap (fireworks need a few)
 
 ## Volumes 0..1; muting sets 0 and remembers the level to go back to.
 var music_volume := 0.6

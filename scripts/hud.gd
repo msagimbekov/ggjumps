@@ -16,6 +16,8 @@ var max_lives := 3
 var title := ""
 var subtitle := ""
 var top_inset := 0.0  # notch / status bar, in viewport units
+var bottom_inset := 0.0  # home indicator / nav bar, in viewport units
+var placing := false  # tools: place-the-bubble mode is on (shows a hint)
 
 var drops := 0
 var radar_left := 0.0
@@ -24,6 +26,7 @@ var tools := false
 var radar := false
 var keep := false
 var ids := false
+var place := false
 
 var _drop_pulse := 0.0
 var _life_flash := 0.0
@@ -52,13 +55,14 @@ func _weight(w: int) -> FontVariation:
 	return f
 
 
-func set_tools(show: bool, radar_on: bool, keep_on: bool, ids_on: bool) -> void:
-	if show == tools and radar_on == radar and keep_on == keep and ids_on == ids:
+func set_tools(show: bool, radar_on: bool, keep_on: bool, ids_on: bool, place_on: bool) -> void:
+	if show == tools and radar_on == radar and keep_on == keep and ids_on == ids and place_on == place:
 		return
 	tools = show
 	radar = radar_on
 	keep = keep_on
 	ids = ids_on
+	place = place_on
 	queue_redraw()
 
 
@@ -73,6 +77,15 @@ func keep_rect() -> Rect2:
 
 func ids_rect() -> Rect2:
 	return _tool_rect(2)
+
+
+func place_rect() -> Rect2:
+	return _tool_rect(3)
+
+
+## Bottom-left: opens the leaderboard.
+func board_rect() -> Rect2:
+	return Rect2(18.0, size.y - 52.0 - 18.0 - bottom_inset, 52.0, 52.0)
 
 
 func _tool_rect(n: int) -> Rect2:
@@ -178,16 +191,15 @@ func _draw() -> void:
 		_tool_button(radar_rect(), radar, 0)
 		_tool_button(keep_rect(), keep, 1)
 		_tool_button(ids_rect(), ids, 2)
+		_tool_button(place_rect(), place, 3)
 
-	# Progress: thin track with a bubble riding the fill.
-	var bar := Rect2(18, top + 66.0, size.x - 36.0, 8.0)
-	draw_rect(bar, Color(0, 0.1, 0.2, 0.35))
-	var fill := bar.size.x * float(best) / total
-	if fill > 0.0:
-		draw_rect(Rect2(bar.position, Vector2(fill, bar.size.y)), Color(1, 1, 1, 0.9))
-	var knob := Vector2(bar.position.x + fill, bar.position.y + bar.size.y * 0.5)
-	draw_circle(knob, 8.0, Color(0.30, 0.80, 1.0))
-	draw_arc(knob, 8.0, 0.0, TAU, 20, Color.WHITE, 2.0)
+	var br := board_rect()
+	var bsb := _pill.duplicate() as StyleBoxFlat
+	bsb.set_corner_radius_all(16)
+	draw_style_box(bsb, br)
+	_trophy(br.get_center())
+	if place:
+		_text_c(_medium, size.y - 100.0 - bottom_inset, "Drag to scroll, tap an island", 22, Color.WHITE)
 
 	if title != "":
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0.05, 0.1, 0.45))
@@ -230,6 +242,24 @@ func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-11, 0), c + Vector2(11, 0), c + Vector2(0, 13)]), col)
 		2:  # island numbers: hash sign
 			draw_string(_bold, Vector2(r.position.x, c.y + 9.0), "#", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 28, col)
+		3:  # place the bubble: map pin
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-8, -4), c + Vector2(8, -4), c + Vector2(0, 14)]), col)
+			draw_circle(c + Vector2(0, -5), 9.0, col)
+			draw_circle(c + Vector2(0, -5), 3.5, Color(0.02, 0.14, 0.26))
+
+
+## Gold cup with handles on a little stand.
+func _trophy(c: Vector2) -> void:
+	var gold := Color(1.0, 0.82, 0.25)
+	var dark := Color(0.80, 0.55, 0.10)
+	draw_arc(c + Vector2(-10, -6), 6.0, PI * 0.5, PI * 1.5, 12, gold, 3.0, true)
+	draw_arc(c + Vector2(10, -6), 6.0, -PI * 0.5, PI * 0.5, 12, gold, 3.0, true)
+	draw_colored_polygon(PackedVector2Array([
+		c + Vector2(-11, -14), c + Vector2(11, -14), c + Vector2(9, -2), c + Vector2(4, 4), c + Vector2(-4, 4), c + Vector2(-9, -2),
+	]), gold)
+	draw_rect(Rect2(c + Vector2(-2.5, 4), Vector2(5, 6)), dark)
+	draw_rect(Rect2(c + Vector2(-9, 10), Vector2(18, 5)), gold)
+	draw_line(c + Vector2(-5, -11), c + Vector2(-4, -3), Color(1, 1, 1, 0.7), 2.0, true)
 
 
 func _text(font: Font, pos: Vector2, s: String, fs: int, col: Color) -> void:
