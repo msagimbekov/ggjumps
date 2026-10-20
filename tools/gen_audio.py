@@ -159,163 +159,126 @@ def write(name, x, peak=0.9):
 
 # ---------------------------------------------------------------------------- music
 
-BPM = 108.0
+BPM = 72.0
 BEAT = 60.0 / BPM
 BAR = BEAT * 4
-BARS = 32
+BARS = 24
 
-# Two bars per chord. D major with a lydian lift: Dmaj9, Bm11, Gmaj9(#11), Asus -> A.
+# Two bars per chord, all soft colours: Dmaj9, Bm9, Gmaj9(#11), Asus2.
 CHORDS = [
     [50, 57, 61, 64, 66],  # Dmaj9 (D A C# E F#)
-    [47, 54, 57, 61, 62],  # Bm11-ish (B F# A C# D)
+    [47, 54, 57, 61, 62],  # Bm9-ish (B F# A C# D)
     [43, 50, 54, 57, 61],  # Gmaj9 (G D F# A C#)
-    [45, 52, 57, 59, 64],  # Asus (A E A B E)
+    [45, 52, 57, 59, 64],  # Asus2 (A E A B E)
 ]
-ARP = [
-    [62, 66, 69, 73, 74, 73, 69, 66],
-    [59, 62, 66, 69, 71, 69, 66, 62],
-    [62, 66, 67, 71, 73, 71, 67, 66],
-    [61, 64, 69, 71, 73, 71, 69, 64],
+# Notes the drifting plucks pick from, per chord.
+DRIFT = [
+    [62, 66, 69, 73, 76, 78],
+    [59, 62, 66, 69, 73, 74],
+    [62, 66, 67, 69, 73, 74],
+    [61, 64, 66, 69, 71, 76],
 ]
-# Lead motif (bars 17-24), (beat offset, midi, beats) relative to each 2-bar chord.
-LEAD = [
-    [(0, 78, 1.5), (1.5, 76, 0.5), (2, 73, 2), (5, 74, 1), (6, 76, 2)],
-    [(0, 74, 1.5), (1.5, 73, 0.5), (2, 71, 3), (6, 69, 2)],
-    [(0, 71, 1), (1, 73, 1), (2, 74, 2), (4, 78, 1.5), (5.5, 76, 2.5)],
-    [(0, 76, 3), (3, 73, 1), (4, 71, 4)],
+# A few long bell notes over the middle pass: (beat offset in the 2-bar chord, midi, beats).
+BELLS = [
+    [(0, 78, 3), (4, 76, 4)],
+    [(0, 74, 4), (5, 73, 3)],
+    [(0, 71, 3), (4, 74, 4)],
+    [(0, 73, 6)],
 ]
-
-
-def section(bar):
-    """0 = intro (pad + arp), 1 = groove, 2 = groove + lead, 3 = breather."""
-    return bar // 8
 
 
 def music():
+    """Calm ambient loop: slow pads, drifting water-drop plucks with echoes, a soft bass
+    hum and faint surf. Gentle motion, no drums, no driving rhythm."""
+    r = np.random.default_rng(21)
     length = BARS * BAR
     n = int(length * SR)
-    pad = np.zeros((n, 2))
-    arp = np.zeros((n, 2))
-    bass = np.zeros(n)
-    drums = np.zeros((n, 2))
-    lead = np.zeros((n, 2))
-    duck = np.ones(n)
+    full_n = n + int(6.0 * SR)  # room for the last notes to ring out; folded back onto the start
+    pad = np.zeros((full_n, 2))
+    drops = np.zeros((full_n, 2))
+    bells = np.zeros((full_n, 2))
+    bass = np.zeros(full_n)
 
-    # Pad: detuned saws through a soft lowpass, chords crossfading.
+    # Pad: detuned saws, dark and slow, with an airy sine an octave up.
     for c in range(BARS // 2):
         chord = CHORDS[c % 4]
         start = c * 2 * BAR
-        dur = 2 * BAR + 0.8
+        dur = 2 * BAR + 2.0
         t = t_of(dur)
-        e = env_adsr(len(t), 0.7, 0.5, 0.85, 0.9)
-        brightness = [1400, 2200, 2600, 1100][section(c * 2)]
+        e = env_adsr(len(t), 1.8, 1.0, 0.85, 2.0)
         for i, m in enumerate(chord):
             voice = np.zeros((len(t), 2))
-            for d, p in ((-7, -0.7), (0, 0.0), (7, 0.7)):
+            for d, p in ((-6, -0.6), (0, 0.0), (6, 0.6)):
                 f = hz(m) * 2 ** (d / 1200.0)
-                voice += pan(saw(f, t, rng.random() * 6.28, top=4000), p)
+                voice += pan(saw(f, t, r.random() * 6.28, top=3000), p)
             for ch in range(2):
-                voice[:, ch] = lowpass(voice[:, ch], brightness)
-            add(pad, voice * e[:, None] * (0.10 if i else 0.07), start)
-    # Slow swell so the pad breathes with each chord.
-    lfo = 0.85 + 0.15 * np.sin(2 * np.pi * np.arange(n) / SR / (2 * BAR) - np.pi / 2)
+                voice[:, ch] = lowpass(voice[:, ch], 1100)
+            air = pan(np.sin(2 * np.pi * hz(m + 12) * t + r.random() * 6.28), 0.5 - i * 0.25) * 0.25
+            add(pad, (voice + air) * e[:, None] * (0.09 if i else 0.06), start)
+    lfo = 0.8 + 0.2 * np.sin(2 * np.pi * np.arange(full_n) / SR / (2 * BAR) - np.pi / 2)
     pad *= lfo[:, None]
 
-    # Arp: FM plucks in 16ths, bouncing left/right.
-    step = BEAT / 4
+    # Drifting plucks: soft bell-like drops on the 8ths, with rests, wandering across the stereo field.
+    step = BEAT / 2
     for k in range(int(length / step)):
-        at = k * step
-        bar = int(at / BAR)
-        notes = ARP[(bar // 2) % 4]
-        sec = section(bar)
-        m = notes[k % 8] + (12 if sec == 2 and k % 16 >= 8 else 0)
-        vel = 0.55 + 0.45 * (k % 4 == 0) - 0.15 * (k % 2)
-        if sec == 3:
-            vel *= 0.6
-        t = t_of(0.45)
-        tone = fm(hz(m), t, 2.0, 1.6, 0.06) * np.exp(-t / 0.13)
-        tone = lowpass(tone, 5200)
-        add(arp, pan(tone * vel * 0.22, 0.45 if k % 2 else -0.45), at)
-    # Dotted-eighth ping-pong echo on the arp: the rushing feel.
+        bar = int(k * step / BAR)
+        if r.random() < (0.45 if bar < 8 else 0.3):
+            continue
+        notes = DRIFT[(bar // 2) % 4]
+        m = notes[r.integers(len(notes))]
+        vel = 0.35 + 0.3 * r.random() + (0.15 if k % 4 == 0 else 0.0)
+        t = t_of(1.2)
+        tone = fm(hz(m), t, 2.0, 0.7, 0.05) * np.exp(-t / 0.38) * np.clip(t / 0.004, 0, 1)
+        tone = lowpass(tone, 3800)
+        add(drops, pan(tone * vel * 0.16, np.sin(k * 0.37) * 0.6), k * step)
+    # Long, soft echoes trailing each drop.
     delay = int(BEAT * 0.75 * SR)
-    echo = np.zeros_like(arp)
-    fb = 0.42
-    src = arp.copy()
-    for k in range(1, 5):
-        shifted = np.zeros_like(arp)
-        shifted[delay * k:] = src[: n - delay * k]
-        shifted = shifted[:, ::-1] if k % 2 else shifted
-        echo += shifted * (fb ** k)
+    echo = np.zeros_like(drops)
+    for k in range(1, 6):
+        shifted = np.zeros_like(drops)
+        shifted[delay * k:] = drops[: full_n - delay * k]
+        echo += (shifted[:, ::-1] if k % 2 else shifted) * (0.45 ** k)
     for ch in range(2):
-        echo[:, ch] = lowpass(echo[:, ch], 3500)
-    arp = arp + echo
+        echo[:, ch] = lowpass(echo[:, ch], 2400)
+    drops = drops + echo
 
-    # Bass and drums in the groove sections.
-    for b in range(BARS):
-        sec = section(b)
-        root = CHORDS[(b // 2) % 4][0] - 12
-        for beat in range(4):
-            at = b * BAR + beat * BEAT
-            if sec in (1, 2) or (sec == 3 and b >= 30):
-                # Kick: sine with a quick pitch drop.
-                t = t_of(0.35)
-                f = 48 + 90 * np.exp(-t / 0.03)
-                kick = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.11)
-                kick += 0.25 * np.sin(2 * np.pi * np.cumsum(f * 2) / SR) * np.exp(-t / 0.015)
-                add(drums, pan(kick * 0.55, 0.0), at)
-                # Duck the pad and bass a little on each beat.
-                d = 1.0 - 0.38 * np.exp(-t_of(BEAT) / 0.14)
-                i0 = int(at * SR)
-                duck[i0:i0 + len(d)] = np.minimum(duck[i0:i0 + len(d)], d[: n - i0])
-            if sec in (1, 2):
-                # Offbeat hat and soft 16th shaker.
-                for s in range(4):
-                    t = t_of(0.12 if s == 2 else 0.05)
-                    noise = highpass(rng.standard_normal(len(t)), 7000 if s == 2 else 9000)
-                    hat = noise * np.exp(-t / (0.035 if s == 2 else 0.012))
-                    add(drums, pan(hat * (0.16 if s == 2 else 0.06), 0.3 if s % 2 else -0.2), at + s * BEAT / 4)
-                if beat in (1, 3):
-                    # Finger-snap / rim on 2 and 4.
-                    t = t_of(0.18)
-                    snap = bandpass(rng.standard_normal(len(t)), 1500, 5500) * np.exp(-t / 0.035)
-                    snap += 0.5 * np.sin(2 * np.pi * 330 * t) * np.exp(-t / 0.02)
-                    add(drums, pan(snap * 0.22, 0.1), at)
-            if sec in (1, 2):
-                # Bass: round 8ths, the second one an octave up.
-                for half in range(2):
-                    t = t_of(BEAT / 2)
-                    f = hz(root + (12 if half and beat % 2 else 0))
-                    tone = np.sin(2 * np.pi * f * t) + 0.25 * np.sin(4 * np.pi * f * t)
-                    tone = np.tanh(tone * 1.4) * env_adsr(len(t), 0.005, 0.1, 0.7, 0.06)
-                    add(bass, tone * 0.32, at + half * BEAT / 2)
-    bass = lowpass(bass, 900)
+    # Bass: a quiet hum on each chord root.
+    for c in range(BARS // 2):
+        t = t_of(2 * BAR + 1.5)
+        f = hz(CHORDS[c % 4][0] - 12)
+        tone = np.sin(2 * np.pi * f * t) + 0.15 * np.sin(4 * np.pi * f * t)
+        add(bass, tone * env_adsr(len(t), 1.2, 0.5, 0.9, 1.5) * 0.16, c * 2 * BAR)
 
-    # Lead: soft FM bell melody in section 2.
-    for c in range(8, 12):
+    # Bells: a handful of long, soft notes over the middle pass only.
+    for c in range(4, 8):
         start = c * 2 * BAR
-        for off, m, beats in LEAD[c % 4]:
-            dur = beats * BEAT + 1.2
+        for off, m, beats in BELLS[c % 4]:
+            dur = beats * BEAT + 2.5
             t = t_of(dur)
-            vib = 1.0 + 0.004 * np.sin(2 * np.pi * 5.0 * t) * np.clip(t / 0.4, 0, 1)
-            tone = fm(hz(m) * vib, t, 1.0, 1.1, 0.4) * 0.7 + fm(hz(m), t, 3.5, 0.8, 0.08) * 0.3
-            tone *= env_adsr(len(t), 0.02, 0.3, 0.55, 1.2, hold=beats * BEAT)
-            add(lead, pan(tone * 0.17, -0.15), start + off * BEAT)
+            vib = 1.0 + 0.003 * np.sin(2 * np.pi * 4.5 * t) * np.clip(t / 0.8, 0, 1)
+            tone = fm(hz(m) * vib, t, 1.0, 0.8, 0.5)
+            tone *= env_adsr(len(t), 0.08, 0.6, 0.5, 2.5, hold=beats * BEAT)
+            add(bells, pan(tone * 0.09, -0.2), start + off * BEAT)
 
-    pad *= duck[:, None]
-    mix = pad + arp * 0.9 + lead + pan(bass * duck, 0.0) + drums
-    # Reverb on everything but the low end; more on pad, arp and lead.
-    ir = reverb_ir(2.6, damp=4500)
-    send = pad * 0.6 + arp * 0.5 + lead * 0.7 + drums * 0.08
-    wet = reverb(send, ir, 1.0)[:, :] - np.pad(send, ((0, len(ir) - 1), (0, 0)))
-    full = np.zeros((n + len(ir) - 1, 2))
-    full[:n] += mix
-    full += wet * 0.35
+    # Faint surf: filtered noise swelling slowly, like waves on a far shore.
+    # The loop is a whole number of swells and each starts silent, so the seam is clean.
+    surf = lowpass(r.standard_normal(full_n), 500)
+    swell = 0.5 + 0.5 * np.sin(2 * np.pi * np.arange(full_n) / SR / (BAR * 1.5) - np.pi / 2)
+    swell[n:] = 0.0
+    surf = np.stack([surf, np.roll(surf, int(0.013 * SR))], axis=1) * (swell ** 2)[:, None] * 0.05
+
+    mix = pad + drops + bells + pan(lowpass(bass, 400), 0.0) + surf
+    ir = reverb_ir(3.8, damp=4000)
+    send = pad * 0.7 + drops * 0.7 + bells * 0.9
+    wet = reverb(send, ir, 1.0) - np.pad(send, ((0, len(ir) - 1), (0, 0)))
+    full = np.zeros((full_n + len(ir) - 1, 2))
+    full[:full_n] += mix
+    full += wet * 0.45
     # Fold the tail onto the start: a seamless loop.
     out = full[:n].copy()
     tail = full[n:]
     out[: len(tail)] += tail
-    out = np.tanh(out * 1.1) / 1.1
-    return out
+    return np.tanh(out * 1.05) / 1.05
 
 
 # ---------------------------------------------------------------------------- effects
