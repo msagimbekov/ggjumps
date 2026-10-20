@@ -15,3 +15,6 @@ android/.build_version
 *.p8
 *.mobileprovision
 export_credentials.cfg
+
+# Python
+__pycache__/
