@@ -321,46 +321,75 @@ def music():
 # ---------------------------------------------------------------------------- effects
 
 
+def bubble(f0, amp, rise=0.1):
+    """One air bubble ringing in water (van den Doel's model): a damped sine whose pitch
+    rises as the bubble moves up. Many of these together are what makes water sound wet."""
+    d = 0.13 * f0 + 0.0072 * f0 ** 1.5  # damping, bigger for higher (smaller) bubbles
+    dur = min(6.0 / d, 0.4)
+    t = t_of(dur)
+    f = f0 * (1.0 + rise * d * t)
+    x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-d * t)
+    return x * np.clip(t / 0.0008, 0, 1) * amp
+
+
 def splash():
-    t = t_of(1.1)
+    r = np.random.default_rng(11)
+    t = t_of(1.0)
     n = len(t)
-    noise = rng.standard_normal(n)
-    # Body: a filtered noise burst that opens then closes, like water parting.
-    body = sweep_filter(noise, 4500, 500) * np.exp(-t / 0.18)
-    body += bandpass(noise, 300, 1400) * np.exp(-t / 0.35) * 0.5
-    # The plunge: a deep bloop whose pitch drops.
-    f = 380 * np.exp(-t / 0.12) + 90
-    bloop = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.16)
-    x = body * 0.7 + bloop * 0.6
-    # Falling droplets: tiny rising chirps scattered over the first half second.
-    for k in range(14):
-        at = 0.06 + rng.random() * 0.5
-        dt = t_of(0.05)
-        f0 = 900 + rng.random() * 1800
-        chirp = np.sin(2 * np.pi * np.cumsum(f0 * (1 + 1.6 * dt / 0.05)) / SR) * np.exp(-dt / 0.012)
-        add(x, chirp * (0.08 + rng.random() * 0.1), at)
-    x = np.tanh(x * 1.5)
-    st = reverb(pan(x, 0.0), reverb_ir(0.9, damp=3500, seed=3), 0.22)
-    return st
+    x = np.zeros(n)
+    # Impact: a sharp, broadband slap of the surface breaking.
+    noise = r.standard_normal(n)
+    slap = bandpass(noise, 400, 4500) * np.exp(-t / 0.045) * np.clip(t / 0.002, 0, 1)
+    body = bandpass(noise, 150, 700) * np.exp(-t / 0.07) * np.clip(t / 0.004, 0, 1)
+    x += slap * 0.5 + body * 0.6
+    # Spray: a short hiss of water thrown into the air.
+    spray = highpass(r.standard_normal(n), 2500) * np.exp(-t / 0.18) * np.clip(t / 0.015, 0, 1)
+    x += spray * 0.05
+    # The plunk: the air pocket behind the bubble closing, a low bubble with a rising pitch.
+    add(x, bubble(420, 0.7, rise=0.25), 0.025)
+    add(x, bubble(690, 0.35, rise=0.2), 0.04)
+    # The bubble cloud: dozens of small bubbles, most of them right after the impact.
+    for k in range(45):
+        at = 0.01 + r.exponential(0.09)
+        f0 = 700 * (6.0 ** r.random())
+        add(x, bubble(f0, (0.08 + 0.18 * r.random()) * (800 / f0) ** 0.4), at)
+    # Drops falling back: light plips with a tiny tick, scattered later.
+    for k in range(16):
+        at = 0.22 + r.random() * 0.55
+        f0 = 1400 + 3200 * r.random()
+        amp = 0.05 + 0.1 * r.random()
+        add(x, bubble(f0, amp, rise=0.15), at)
+        tick = highpass(r.standard_normal(int(0.004 * SR)), 3000) * np.exp(-t_of(0.004) / 0.001)
+        add(x, tick * amp * 0.6, at - 0.002)
+    x = lowpass(x, 7500, order=1)  # water is never crisp at the top
+    st = np.stack([x, x], axis=1)
+    # A touch of stereo spread on the cloud, and a small outdoor ambience.
+    d = int(0.0007 * SR)
+    st[d:, 1] = x[:-d] * 0.85 + x[d:] * 0.15
+    return reverb(st, reverb_ir(0.5, damp=6000, seed=3), 0.08)
 
 
 def land(ice=False):
-    t = t_of(0.5)
-    # Soft jelly plop: a short pitch drop plus a little wobble as the bubble settles.
-    base = 520 if ice else 300
-    f = base * np.exp(-t / 0.025) + (240 if ice else 120)
-    f *= 1 + 0.06 * np.sin(2 * np.pi * 14 * t) * np.exp(-t / 0.1)
-    plop = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.09)
-    thump = np.sin(2 * np.pi * 70 * t) * np.exp(-t / 0.05)
-    tap = bandpass(rng.standard_normal(len(t)), 800, 4000) * np.exp(-t / 0.006)
-    x = plop * 0.8 + thump * (0.2 if ice else 0.55) + tap * 0.25
+    """A liquid bubble touching down: a soft wet splat with a light 'blip', no weight."""
+    r = np.random.default_rng(12 if ice else 13)
+    t = t_of(0.35)
+    n = len(t)
+    x = np.zeros(n)
+    # Contact: a tiny, bright tick, then a short wet smack of the skin flattening.
+    tick = bandpass(r.standard_normal(n), 2500, 9000) * np.exp(-t / 0.0025)
+    smack = bandpass(r.standard_normal(n), 900, 3500) * np.exp(-t / 0.018) * np.clip(t / 0.002, 0, 1)
+    x += tick * 0.35 + smack * 0.45
+    # The jelly wobble: a quick upward 'blip', then a smaller one as it rebounds.
+    f0 = 1250 if ice else 820
+    add(x, bubble(f0, 0.55, rise=0.35), 0.003)
+    add(x, bubble(f0 * 1.35, 0.18, rise=0.35), 0.075)
     if ice:
-        # Glassy sparkle and a short hiss of sliding.
-        for k, m in enumerate([88, 95, 100]):
-            add(x, fm(hz(m), t_of(0.4), 1.4, 0.8, 0.05) * np.exp(-t_of(0.4) / 0.08) * 0.12, 0.01 + k * 0.03)
-        x += highpass(rng.standard_normal(len(t)), 5000) * np.exp(-t / 0.12) * 0.05
-    st = reverb(pan(x, 0.0), reverb_ir(0.6, damp=5000, seed=4), 0.12)
-    return st
+        # Glassy: a faint high clink from the hard surface.
+        ct = t_of(0.3)
+        clink = (np.sin(2 * np.pi * 3150 * ct) + 0.5 * np.sin(2 * np.pi * 4720 * ct)) * np.exp(-ct / 0.06)
+        add(x, clink * 0.12, 0.0)
+    x = highpass(x, 250)  # nothing heavy underneath
+    return reverb(np.stack([x, x], axis=1), reverb_ir(0.35, damp=7000, seed=4), 0.06)
 
 
 def chime(notes, gap, tail, bright=1.0):
