@@ -11,6 +11,8 @@ const MIN_DRAG := 24.0  # shorter drags cancel the jump
 const GRAB_RADIUS := 90.0
 const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
+const ICE_SCALE := 1.1
+const EDGE_MARGIN := 20.0  # islands closer than this to the screen edge get nudged inwards
 const GRASS_DECEL := 3200.0
 const LEVEL_SEED := 99
 const LEVEL_ATTEMPTS := 60
@@ -165,7 +167,7 @@ func _build_level() -> void:
 			if kind == Land.Kind.MOVING:
 				gap += Land.SWAY_AMP  # it sways towards its neighbours, keep the closest approach as wide
 			if kind == Land.Kind.ICE:
-				radius = maxf(radius, 72.0)  # ice is hard enough to stop on
+				radius = maxf(radius, 72.0) * ICE_SCALE  # ice is hard enough to stop on
 			if last:
 				radius = 80.0  # the goal island: plain, full size, centred
 				ang = atan2(-1.0, 0.0)
@@ -192,6 +194,9 @@ func _build_level() -> void:
 				lo += Land.SWAY_AMP + 4.0
 				hi -= Land.SWAY_AMP + 4.0
 			next.x = clampf(next.x, lo, hi)
+			var edge := minf(next.x - l.radius_max, 540.0 - next.x - l.radius_max)
+			if edge < EDGE_MARGIN:
+				next.x += signf(270.0 - next.x) * 0.4 * l.radius_max  # 20% of the island's width
 			if last:
 				next.x = 270.0
 			l.position = next
