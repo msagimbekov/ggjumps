@@ -23,12 +23,22 @@
   {
    "platform": "iOS",
    "shape": "e6a864a4a58579d9a985e84b127e15a90888474e74b306227c7056cc0e1d6bb0",
-   "app": "0.1.0",
-   "version": 2,
-   "file": "ios-0.1.0-2.pck",
-   "sha256": "4ed55bb978b27faef2f0ef4d6773feb2524be7e78631d4011399b02e44ec1784",
-   "signature": "wfe3hSjT8+NY/g8lFusVlbWjkbR/LICiA/Y7j6kM27T3k7tziM/QjdR0awv1DtQAhylXh6E5sFWnYzs9+hmBd7D9UFEEGPSRcmCuIEAIeNn5NxVwBWHyGzI3reIDZuhYHSbYjsdJ0eIhhu+EpP6QH1BMAo0xEUhCOoSLlOI08juBi+VvPMSWoTXJE4uypIeQaZTDn69S7MaNGJTh4jKlafso8Lvevz8cLPgtrhXqrzVdZ1z10IjaUI649gQ0llkYD0ljVat71h6hZKFXxu52KBiLhXsr3+FvCWEVpNqqXIjKUuWpxyK1z0NdS/xUQDWwox1iBETBl2b2CEHFJ9Tntw==",
-   "commit": "70c6b33"
+   "app": "0.1.1",
+   "version": 3,
+   "file": "ios-0.1.1-3.pck",
+   "sha256": "81f1c01905ac9f1e7d96e2eea008870ea3f7a937e0af9859bb70cd26879b0266",
+   "signature": "NKYGVuKhKR2cvaxL8/EHSJZYkJCm5oOkY3Z538qCch6hrAFQ6GKXpF9UvF5L7Yo7YAYrs0UhzE40fE95GuSujZ67uoCRKyiW09ToRxnjBNQzVsq9Inb0aRxtyn1Lm4OFZaPYilwLyIU/twbgnL1kU3wc1DbfQkmQtSgOrO1ml7n2NurfVvuIZi36vl//4L/o3XVh1LKbXgXhZJ3cKcggNLyaBJPdm29VoW3QRERG76ZylTGKoXxlN2L741z1behmu9BWUN7/j9i6C4E1zY4B93qizDGfW1AeiE+hKvgRk33RQxIPX4kBqdqGhdFpFNsyLrbHStMae1KlWAnZm1c+IA==",
+   "commit": "6aef006"
+  },
+  {
+   "platform": "Android",
+   "shape": "e6a864a4a58579d9a985e84b127e15a90888474e74b306227c7056cc0e1d6bb0",
+   "app": "0.1.1",
+   "version": 3,
+   "file": "android-0.1.1-3.pck",
+   "sha256": "3369cda4f725b6332bc2d2ad5543db8015b307a98da6b5a2111e552f9a050f77",
+   "signature": "rN6DTKypp1KhB4GkrbHZo9pN65XVtGWxnddStjeFGQS1ZkTRYmSWdzJa6O4WwvT+FqsoBzj8TXfHtWHTzO2XlBOYryFL6pZ4pXppRM3NPihNXN3GTQYXbmMMq8nz3xqJznCzWPnmZpjEGSAyb2gn8r2uC3aqDQ4k+Dx+MRaRwvgotD9N0AMx2HjdUE2890vcZpaymOftDA+jCpy7YJKRpMeSRdia66g25K1S7lXBSM32mnGmkBX+vNDANdRsxrXHnhxfM1heY9a75wCDsFXyn02Zr2f8UoovVc9idtRpdjOOWheMKVSTEmuD/aMyAJ1cfOEcNnQnMTlfRcL+EkkE3A==",
+   "commit": "6aef006"
   }
  ]
 }
