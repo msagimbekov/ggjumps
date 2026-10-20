@@ -25,6 +25,7 @@ const RADAR_PICKUPS := 9
 const DROPS_PER_LIFE := 3
 const RADAR_TIME := 7.0  # seconds; pulses softly for the last two
 const COLLECT_RADIUS := 34.0  # settle this close to a pickup centre to collect it
+const RADAR_PING := 1.75  # seconds between the soft sonar pings while the radar runs
 const AIM_TAPS := 5  # taps on the lives icons that show the tools buttons
 const HIDE_TAPS := 3  # taps that hide them again and reset the tools
 
@@ -45,6 +46,9 @@ var _cam: Camera2D
 var _fx: Fx
 var _bubble: Bubble
 var _hud: Hud
+var _sound: Sound
+var _settings: SettingsPanel
+var _radar_ping := 0.0
 var drops := 0  # life drops collected towards the next life
 var radar_time := 0.0  # seconds of pickup radar left
 var _drops_hold := 0.0  # keeps a full counter on screen for a moment after the life is added
@@ -128,6 +132,18 @@ func _build_nodes() -> void:
 		var inset := float(DisplayServer.get_display_safe_area().position.y)
 		_hud.top_inset = inset * get_viewport_rect().size.y / win_h
 
+	_sound = Sound.new()
+	add_child(_sound)
+	_settings = SettingsPanel.new()
+	_settings.sound = _sound
+	ui.add_child(_settings)
+	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_settings.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if win_h > 0.0 and OS.has_feature("mobile"):
+		var safe := DisplayServer.get_display_safe_area()
+		var bottom := float(DisplayServer.screen_get_size().y - safe.end.y)
+		_settings.bottom_inset = maxf(bottom, 0.0) * get_viewport_rect().size.y / win_h
+
 
 ## Same layout on every device: one seeded RNG, always drawing the same numbers per attempt.
 func _build_level() -> void:
@@ -207,6 +223,7 @@ func _build_level() -> void:
 			if _is_solvable(prev, l):
 				break
 		_add_land(l)
+	lands[TOTAL_JUMPS].finish = true
 	for l in lands:
 		if l.kind == Land.Kind.ICE:
 			l.grow(ICE_SCALE)
@@ -398,6 +415,12 @@ func _land_at(p: Vector2) -> Land:
 
 
 func _input(event: InputEvent) -> void:
+	if _settings.handle(event):
+		if _dragging and event is InputEventMouseButton and not event.pressed:
+			_dragging = false  # a jump drag that ended on the settings is cancelled
+			_drag = Vector2.ZERO
+			_bubble.pull = Vector2.ZERO
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			if state == State.OVER or state == State.WON:
@@ -511,6 +534,10 @@ func _process(delta: float) -> void:
 		_fx.arcs_power = _drag.length() / MAX_DRAG
 	if radar_time > 0.0:
 		radar_time = maxf(radar_time - delta, 0.0)
+		_radar_ping -= delta
+		if _radar_ping <= 0.0 and radar_time > 0.5:
+			_radar_ping = RADAR_PING
+			_sound.play("radar_ping", -7.0)
 	if _drops_hold > 0.0:
 		_drops_hold -= delta
 		if _drops_hold <= 0.0:
@@ -564,11 +591,13 @@ func _on_landed() -> void:
 	if l == null:
 		_start_fall()
 	elif l.kind == Land.Kind.ICE and _fly_power > 0.12:
+		_sound.play("land_ice", 0.0, randf_range(0.95, 1.05))
 		_slide_vel = _fly_dir * _fly_power * SLIDE_SPEED
 		_slide_land = l
 		_bubble.land_squash()
 		state = State.SLIDE
 	else:
+		_sound.play("land_ice" if l.kind == Land.Kind.ICE else "land", 0.0, randf_range(0.93, 1.07))
 		_settle(l)
 
 
@@ -593,6 +622,8 @@ func _resolve_pickup(l: Land) -> void:
 		p.vanish()
 	elif p.kind == Pickup.Kind.RADAR:
 		radar_time = RADAR_TIME
+		_radar_ping = RADAR_PING + 0.6
+		_sound.play("radar_on")
 		p.collect("Radar %ds" % int(RADAR_TIME))
 	else:
 		if _drops_hold > 0.0:
@@ -601,10 +632,12 @@ func _resolve_pickup(l: Land) -> void:
 		drops += 1
 		if drops >= DROPS_PER_LIFE:
 			lives += 1
+			_sound.play("life")
 			_drops_hold = 0.8
 			p.collect("+1 life!")
 		else:
 			p.collect("%d/%d" % [drops, DROPS_PER_LIFE])
+			_sound.play("drop", 0.0, 1.0 + 0.12 * (drops - 1))
 
 
 ## Scatters the pickups over the level: LIFE_PICKUPS drops and RADAR_PICKUPS lenses, one island
@@ -657,6 +690,7 @@ func _start_fall() -> void:
 		lives -= 1
 	_fall_t = 0.0
 	_fx.splash(_bubble.position, 1.0, 0.45)
+	_sound.play("splash", 0.0, randf_range(0.94, 1.06))
 	state = State.FALL
 
 

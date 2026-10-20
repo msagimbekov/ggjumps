@@ -1,6 +1,7 @@
 class_name Fx
 extends Node2D
 ## Drag indicator, rings and water splashes, drawn above the land and below the bubble.
+## Rings on the water surface go on a layer under the islands, so land hides them.
 
 const GRAVITY := 900.0
 const ARC_COUNT := 7
@@ -20,12 +21,22 @@ var aim_from := Vector2.ZERO
 var aim_to := Vector2.ZERO
 
 var _rings: Array[Dictionary] = []
+var _water_rings: Array[Dictionary] = []
+var _under: Node2D  # draws _water_rings below the islands
 var _drops: Array[Dictionary] = []
 var _jets: Array[Dictionary] = []
 
 
-func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, squash := 1.0) -> void:
-	_rings.append({"p": p, "t": 0.0, "dur": dur, "r": radius, "col": col, "sq": squash})
+func _ready() -> void:
+	_under = Node2D.new()
+	_under.z_index = -2  # relative to this node (z 1): just under the islands (z 0)
+	_under.draw.connect(_draw_water)
+	add_child(_under)
+
+
+## `water` rings spread on the sea surface and are hidden by islands; the others sit on top.
+func ring(p: Vector2, radius := 60.0, col := Color(1, 1, 1, 0.8), dur := 0.6, squash := 1.0, water := false) -> void:
+	(_water_rings if water else _rings).append({"p": p, "t": 0.0, "dur": dur, "r": radius, "col": col, "sq": squash})
 
 
 ## Jump tail: a thin tapered streak behind the bubble (set each frame while flying).
@@ -39,8 +50,8 @@ var tail_power := 0.0
 func splash(p: Vector2, k := 1.0, rise := -1.0) -> void:
 	if rise < 0.0:
 		rise = k
-	ring(p, 80.0 * k, Color(0.85, 0.97, 1.0, 0.9), 0.9, 0.55)
-	ring(p, 46.0 * k, Color(1, 1, 1, 0.7), 0.6, 0.55)
+	ring(p, 80.0 * k, Color(0.85, 0.97, 1.0, 0.9), 0.9, 0.55, true)
+	ring(p, 46.0 * k, Color(1, 1, 1, 0.7), 0.6, 0.55, true)
 	_jets.append({"p": p, "t": 0.0, "dur": 0.6, "k": rise})
 	var crown := int(18.0 * k) + 4
 	for i in crown:
@@ -56,6 +67,9 @@ func _process(delta: float) -> void:
 	for r in _rings:
 		r.t += delta
 	_rings = _rings.filter(func(r): return r.t < r.dur)
+	for r in _water_rings:
+		r.t += delta
+	_water_rings = _water_rings.filter(func(r): return r.t < r.dur)
 	for j in _jets:
 		j.t += delta
 	_jets = _jets.filter(func(j): return j.t < j.dur)
@@ -68,8 +82,9 @@ func _process(delta: float) -> void:
 			landed.append(d)
 	for d in landed:
 		_drops.erase(d)
-		ring(d.p, 7.0 + d.r * 2.0, Color(1, 1, 1, 0.6), 0.35, 0.6)
+		ring(d.p, 7.0 + d.r * 2.0, Color(1, 1, 1, 0.6), 0.35, 0.6, true)
 	queue_redraw()
+	_under.queue_redraw()
 
 
 func _draw() -> void:
@@ -85,13 +100,7 @@ func _draw() -> void:
 		draw_circle(aim_to, 3.0, Color(1, 1, 1, 0.9 * aim_alpha))
 	if tail_on:
 		_draw_tail()
-	for r in _rings:
-		var u: float = r.t / r.dur
-		var col: Color = r.col
-		col.a *= 1.0 - u
-		draw_set_transform(r.p, 0.0, Vector2(1.0, r.sq))
-		draw_arc(Vector2.ZERO, r.r * (1.0 - pow(1.0 - u, 2.0)), 0.0, TAU, 40, col, 3.0)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_rings(self, _rings)
 	for j in _jets:
 		_draw_jet(j)
 	for d in _drops:
@@ -100,6 +109,20 @@ func _draw() -> void:
 		draw_circle(d.p, d.r * 0.8, Color(0, 0.1, 0.2, 0.12))
 		draw_line(pos, pos - vel * 0.025, Color(0.85, 0.96, 1.0, 0.7), d.r * 1.3)
 		draw_circle(pos, d.r, Color(0.92, 0.98, 1.0, 0.95))
+
+
+func _draw_water() -> void:
+	_draw_rings(_under, _water_rings)
+
+
+func _draw_rings(on: CanvasItem, list: Array[Dictionary]) -> void:
+	for r in list:
+		var u: float = r.t / r.dur
+		var col: Color = r.col
+		col.a *= 1.0 - u
+		on.draw_set_transform(r.p, 0.0, Vector2(1.0, r.sq))
+		on.draw_arc(Vector2.ZERO, r.r * (1.0 - pow(1.0 - u, 2.0)), 0.0, TAU, 40, col, 3.0)
+	on.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## Streamlined wake: as wide as the bubble where it leaves its edges, then sweeping in to a fine

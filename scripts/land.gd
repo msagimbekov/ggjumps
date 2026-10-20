@@ -19,6 +19,7 @@ var amp := 0.0  # sway amplitude, 0 = static
 var sway_dir := Vector2.RIGHT  # axis of the sway: RIGHT (left-right) or DOWN (up-down)
 var frame_delta := Vector2.ZERO  # how far a swaying island moved in the last update
 var pickup: Pickup  # collectable on this island, if any
+var finish := false  # the goal island: carries the finish flag
 var _inner := PackedVector2Array()
 var _shallow_far := PackedVector2Array()
 var _shallow_near := PackedVector2Array()
@@ -178,6 +179,8 @@ func _draw() -> void:
 			_draw_belt()
 		Kind.MOVING:
 			_draw_sway()
+	if finish:
+		_draw_flag()
 	if _show_id:
 		var f := ThemeDB.fallback_font
 		var txt := str(index)
@@ -239,3 +242,45 @@ func _draw_sway() -> void:
 		draw_line(c, c + Vector2(10, -4), _deco_color, 2.0)
 		draw_line(c + Vector2(5, -2), c + Vector2(8, 5), _deco_color, 2.0)
 		draw_circle(c + Vector2(-7, 6), 3.5, Color(0.45, 0.47, 0.52, 0.7))
+
+
+## Finish flag: a pole planted on the island with a waving chequered flag.
+func _draw_flag() -> void:
+	const COLS := 6
+	const ROWS := 4
+	const CELL := 8.0
+	var base := Vector2(26, 14)
+	var top := base + Vector2(0, -78)
+	# Shadow of pole and flag on the ground, thrown to the lower right like the island's.
+	draw_line(base, base + Vector2(40, 20), Color(0, 0.06, 0.12, 0.25), 4.0, true)
+	draw_colored_polygon(PackedVector2Array([base + Vector2(28, 14), base + Vector2(70, 34), base + Vector2(62, 44), base + Vector2(22, 24)]), Color(0, 0.06, 0.12, 0.16))
+	draw_set_transform(base, 0.0, Vector2(1.0, 0.5))
+	draw_circle(Vector2.ZERO, 6.0, Color(0.30, 0.22, 0.14, 0.6))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# The cloth: each column lifts and drops with a wave running away from the pole.
+	var wave := func(x: float) -> float:
+		return sin(_t * 4.5 - x * 0.12) * 3.5 * (x / (COLS * CELL))
+	for cx in COLS:
+		var x0 := cx * CELL
+		var x1 := x0 + CELL
+		var y0: float = wave.call(x0)
+		var y1: float = wave.call(x1)
+		var shade := 0.9 + 0.1 * cos(_t * 4.5 - x0 * 0.12)
+		for cy in ROWS:
+			var dark := (cx + cy) % 2 == 1
+			var col := Color(0.12, 0.13, 0.16) if dark else Color(1, 1, 1)
+			col = Color(col.r * shade, col.g * shade, col.b * shade)
+			var o := top + Vector2(3, 2 + cy * CELL)
+			draw_colored_polygon(PackedVector2Array([o + Vector2(x0, y0), o + Vector2(x1, y1), o + Vector2(x1, y1 + CELL), o + Vector2(x0, y0 + CELL)]), col)
+	var edge := PackedVector2Array()
+	for cx in COLS + 1:
+		edge.append(top + Vector2(3 + cx * CELL, 2 + wave.call(cx * CELL)))
+	for cx in range(COLS, -1, -1):
+		edge.append(top + Vector2(3 + cx * CELL, 2 + ROWS * CELL + wave.call(cx * CELL)))
+	edge.append(edge[0])
+	draw_polyline(edge, Color(0.05, 0.06, 0.08, 0.6), 1.5, true)
+	# Pole with a gold knob.
+	draw_line(base, top, Color(0.25, 0.20, 0.16), 5.0, true)
+	draw_line(base + Vector2(-1, 0), top + Vector2(-1, 0), Color(0.85, 0.80, 0.72), 2.0, true)
+	draw_circle(top + Vector2(0, -3), 5.0, Color(1.0, 0.82, 0.25))
+	draw_circle(top + Vector2(-1.5, -4.5), 1.8, Color(1, 1, 1, 0.8))
