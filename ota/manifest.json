@@ -43,22 +43,22 @@
   {
    "platform": "iOS",
    "shape": "c53ce0b05fdc4dcb754d890b1edd9b291ea43333e24aa604c462eee7bd97629c",
-   "app": "0.1.5",
-   "version": 7,
-   "file": "ios-0.1.5-7.pck",
-   "sha256": "8ac081a38d206a992a7936e52419e0c6e008fdaa67ee01eeaaa4d2a8bc59a850",
-   "signature": "SE6gUoKJKLyq/s9H9vDJMQNkKrzlYyfRzqMOoPZLUbqxvKDhDIaAkGhhEv09gNewizv/fJbz3qqhdYog2tAGHzpQbVbMauPYmw8k2K/RHA2wZEH2WnG8jhgE2n9Whc3HrYCfS4rNlnlvkKQFGB3xTu1ebaTiguEY1dzzFSGMCXlJk0poBDe6KBVWas70CcWaqYBHIRej8NfJs0+/d45hxXwWtoiuRj/07JuLQeRT7blY1ul6ZkPt1rPjZLlZPPMneW0RzdYTNsF+sRQ3TzO7+UNhWKWs/x8PAskaz9zekH1ZYw4KNRHSgOGByAToU2+U7/+C5Mxd0Kdjb1VVkSFqTA==",
-   "commit": "1d0abf0"
+   "app": "0.1.6",
+   "version": 8,
+   "file": "ios-0.1.6-8.pck",
+   "sha256": "3c03a6fd485b6432f640d187169657963c34d22bc9d953672b750adf435b5a14",
+   "signature": "fPaTOIv/HNXBKz5oC4rD5leNGTrvJkFfEg0EHkfZwJ52OiUUOS4cAfkBMSuq4KJfKY0xzWjp7M0TIG6eTIIsWFuBIVqbvz3NsNOsmrIzENhBlu4he6UvkZdGaLWX+GVGWLl1X8xjFBvLXbWJwyhUInJzdTltsi844LTGGXeLDQV7zdxFVGZpqQsewdwQBn0pRYaSla/Zdcal/x4Hs3JvcGfx9kRm5SaWlXVrBmJwwTT8N4XF7zUbmqMd0enjIk5GkXky8UhLQ9BffIN/LN3XmzBKEdM3zBuzHiPqqxiahc0sKHZfqD3YpUHOvxWdSLeruYxwMHKHS32C1T7sT/DHiw==",
+   "commit": "06dc930"
   },
   {
    "platform": "Android",
    "shape": "c53ce0b05fdc4dcb754d890b1edd9b291ea43333e24aa604c462eee7bd97629c",
-   "app": "0.1.5",
-   "version": 7,
-   "file": "android-0.1.5-7.pck",
-   "sha256": "bdd654d14f0a22bd1ff84afd3d57c92e3e3aeaf9c4daa8073b4f56e8665c7975",
-   "signature": "QFI1Rdy7xPYY0gZc2V4uaCFGWmvQv3hghzRX6nGU94/yIPFFiGuSXFK6dcdRHeGIsqfkJeCDL35IMe7QpYpgQMd21SxgzEjb4KIZBsJ9xHeoDCYpBA8c0taLXN/lO9SgSZv6XByEpeTLx6mbmih6G7aCfre1YQeKg+W2+Q1X0SkSdopaPSyK8c2fVDPEtwsgx26P7LjjYCrsRp/zuj8BnMHokcCEOs/VKoIOE/2vVkxGjrgQ7QCUdEYazj07ZddhgEKA6KWeTInvMub/d2nUIiwYNa6FS21QuoeNRRN8Ae3X1sDYtY/dsA4C3yH81z0TIE/lphV7JHOSr6wBkwgeAg==",
-   "commit": "1d0abf0"
+   "app": "0.1.6",
+   "version": 8,
+   "file": "android-0.1.6-8.pck",
+   "sha256": "ca21f2bce693099f2d80349f7a97f8f574a84dfab6635e29c7abc19d9ee5c2a4",
+   "signature": "VcGMT0bUPKhUUXlSH7JhTECODvgeNwdBwB91VYF8k0/g097pMPEoUL6HuUkdeLKqVMXN3QcEj/U0vTG5GeoaryD0vqGNVSFZNCjfQdYZHusjrXKrOEr1t74XnzEhYg6+dut/1Zs6EhhZbrZ++icecIhWl7F/oMpmf40Ot7Eg3UYk721sdFfe9ww99R9Y+ByUpcV9UXezdUl///GmAG1vSt55OXcf0/eBLKNoP9hmOaVPTm6pzbeAOx4ePXBEQ0JNvvq9rVtBoFUlqiBCjXyl9ZcnVuaLKM5ruF9fm6bzIuRB0LMQ1AXBPRZSS24mgVo0t6G3Z6tfB588o4KJs6VBtA==",
+   "commit": "06dc930"
   }
  ]
 }
