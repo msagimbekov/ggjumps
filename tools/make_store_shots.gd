@@ -3,12 +3,16 @@ extends SceneTree
 ## runs in a SubViewport laid out at its own 540 x 960 and drawn at 2x, staged scene by scene.
 ##   Godot --path . -s res://tools/make_store_shots.gd -- --no-intro
 ## (--no-intro so the welcome screen is added here, for its own shot, not over the others).
+## With `--ios` the same shots come out at the App Store's 6.3" iPhone size (1206 x 2622, the
+## game laid out 540 wide like on a tall phone) into res://ui/store/ios/.
 
 const OUT := "res://ui/store/"
+const IOS_SIZE := Vector2i(1206, 2622)
 const Skins := preload("res://scripts/skins.gd")
 
 var _vp: SubViewport
 var _m: Node2D
+var _out := OUT
 
 
 func _initialize() -> void:
@@ -21,6 +25,11 @@ func _run() -> void:
 	_vp = SubViewport.new()
 	_vp.size = Vector2i(1080, 1920)
 	_vp.size_2d_override = Vector2i(540, 960)
+	if "--ios" in OS.get_cmdline_user_args():
+		_vp.size = IOS_SIZE
+		_vp.size_2d_override = Vector2i(540, roundi(540.0 * IOS_SIZE.y / IOS_SIZE.x))
+		_out = OUT + "ios/"
+		DirAccess.make_dir_recursive_absolute(_out)
 	_vp.size_2d_override_stretch = true
 	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(_vp)
@@ -67,8 +76,9 @@ func _run() -> void:
 
 ## World position to SubViewport pixels (the camera only scrolls vertically).
 func _screen(world: Vector2) -> Vector2:
-	var top_left: Vector2 = _m._cam.get_screen_center_position() - Vector2(270, 480)
-	return (world - top_left) * 2.0
+	var layout := Vector2(_vp.size_2d_override)
+	var top_left: Vector2 = _m._cam.get_screen_center_position() - layout / 2.0
+	return (world - top_left) * _vp.size.x / layout.x
 
 
 ## Feeds the game a mouse event at `at` (SubViewport pixels): a press / release, or a move.
@@ -99,7 +109,7 @@ func _shot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := _vp.get_texture().get_image()
 	img.convert(Image.FORMAT_RGB8)
-	img.save_png(OUT + name + ".png")
+	img.save_png(_out + name + ".png")
 
 
 func _frames(n: int) -> void:

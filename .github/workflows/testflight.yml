@@ -95,8 +95,13 @@ jobs:
 
       - name: Export Xcode project
         run: |
-          # TestFlight needs a unique build number per upload.
+          # The version players see comes from project.godot (application/config/version), as on
+          # Android; TestFlight needs a unique build number per upload.
+          APP_VERSION="$(tr -d '\r' < project.godot | sed -n 's/^config\/version="\(.*\)"$/\1/p')"
+          [ -n "$APP_VERSION" ] || { echo "No application/config/version in project.godot"; exit 1; }
+          sed -i '' "s/^application\/short_version=.*/application\/short_version=\"$APP_VERSION\"/" export_presets.cfg
           sed -i '' "s/^application\/version=.*/application\/version=\"${{ github.run_number }}\"/" export_presets.cfg
+          echo "### iOS $APP_VERSION (${{ github.run_number }})" >> "$GITHUB_STEP_SUMMARY"
           sed -i '' 's/^application\/export_project_only=.*/application\/export_project_only=true/' export_presets.cfg
           sed -i '' "s/^application\/provisioning_profile_uuid_release=.*/application\/provisioning_profile_uuid_release=\"$PROFILE_UUID\"/" export_presets.cfg
           grep -n "provisioning_profile_uuid_release\|code_sign_identity_release" export_presets.cfg
