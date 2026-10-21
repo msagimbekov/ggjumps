@@ -43,6 +43,8 @@ const WaterView := preload("res://scripts/water_view.gd")
 const Fireworks := preload("res://scripts/fireworks.gd")
 const GameOver := preload("res://scripts/ui/game_over.gd")
 const MockAd := preload("res://scripts/ui/mock_ad.gd")
+const Ads := preload("res://scripts/ads.gd")
+const ADS_START_DELAY := 6.0  # s after launch: past the intro and the OTA check
 
 var state := State.AIM
 var lands: Array[Land] = []
@@ -63,6 +65,7 @@ var _sound: Sound
 var _settings: SettingsPanel
 var _radar_ping := 0.0
 var _board: LeaderboardApi
+var _ads: Ads
 var _modals: CanvasLayer  # windows (settings, leaderboard, congratulations) open in here
 var _fireworks: Fireworks
 var _run_ms := 0.0  # play time of this run, paused while a window is open
@@ -121,6 +124,7 @@ func _ready() -> void:
 	if ota:
 		ota.confirm_boot()
 		get_tree().create_timer(3.0).timeout.connect(ota.check_for_update)
+	get_tree().create_timer(ADS_START_DELAY).timeout.connect(_ads.start)
 
 
 func _build_nodes() -> void:
@@ -180,6 +184,9 @@ func _build_nodes() -> void:
 
 	_board = LeaderboardApi.new()
 	add_child(_board)
+	_ads = Ads.new()
+	add_child(_ads)
+	_settings.ads = _ads
 	var show := CanvasLayer.new()
 	show.layer = 15
 	add_child(show)
@@ -954,16 +961,29 @@ func _show_game_over() -> void:
 	_modals.add_child(g)
 
 
-## A rewarded ad (a 2 s stand-in for now); when it has played, one more life and the run
-## carries on from the island it stopped on. The game is silent while the ad plays.
+## A rewarded ad (AdMob on phones, a 2 s stand-in on desktop); when it has played, one more life
+## and the run carries on from the island it stopped on. With no ad to show (no network, no
+## fill) the life is given anyway: a missing ad never blocks the game. Closed early: back to
+## the game over window. The game is silent while the ad plays.
 func _show_ad() -> void:
-	var ad := MockAd.new()
 	AudioServer.set_bus_mute(0, true)
-	ad.rewarded.connect(func():
+	if not Ads.supported():
+		var mock := MockAd.new()
+		mock.rewarded.connect(_ad_watched)
+		_modals.add_child(mock)
+		return
+	var result: Ads.Result = await _ads.show_rewarded()
+	if result == Ads.Result.SKIPPED:
 		AudioServer.set_bus_mute(0, false)
-		lives += 1
-		_respawn())
-	_modals.add_child(ad)
+		_show_game_over()
+	else:
+		_ad_watched()
+
+
+func _ad_watched() -> void:
+	AudioServer.set_bus_mute(0, false)
+	lives += 1
+	_respawn()
 
 
 ## Back on the spot it last landed on.

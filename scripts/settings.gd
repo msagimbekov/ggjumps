@@ -14,6 +14,7 @@ var sound: Sound
 var modal_parent: Node  # layer the window opens in
 var on_skin_change: Callable  # the bubble colour was changed
 var on_how_to: Callable  # opens the "How to play" cards
+var ads: Node  # scripts/ads.gd: "Privacy options" where the ads' consent form must be reachable
 var bottom_inset := 0.0  # home indicator / nav bar, in viewport units
 var is_open := false
 
@@ -68,6 +69,14 @@ func open() -> void:
 		if on_how_to.is_valid():
 			on_how_to.call())
 	m.content.add_child(how)
+	if ads and ads.privacy_options_required():
+		var privacy := Button.new()
+		privacy.text = "Privacy options"
+		privacy.theme_type_variation = "GhostButton"
+		privacy.pressed.connect(func():
+			m.close()
+			ads.show_privacy_options())
+		m.content.add_child(privacy)
 	m.closed.connect(_on_closed)
 	modal_parent.add_child(m)
 	queue_redraw()

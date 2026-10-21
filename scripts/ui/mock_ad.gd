@@ -1,5 +1,5 @@
 extends Control
-## Stand-in for a rewarded video ad until a real ad network is wired in: a full-screen
+## Stand-in for the rewarded ad on desktop, where AdMob does not run (scripts/ads.gd): a full-screen
 ## placeholder that "plays" for DURATION seconds, then emits `rewarded` and closes.
 
 signal rewarded

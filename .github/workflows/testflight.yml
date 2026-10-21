@@ -87,9 +87,11 @@ jobs:
           mv templates/templates/* "$tdir/"
           echo "GODOT=$PWD/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
 
+      # The first run also downloads the AdMob plugin's native libraries (addons/admob).
       - name: Import project
         run: |
-          "$GODOT" --headless --import || true
+          "$GODOT" --headless --editor --quit || true
+          "$GODOT" --headless --editor --quit || true
 
       - name: Export Xcode project
         run: |
@@ -101,6 +103,13 @@ jobs:
           mkdir -p build/ios
           "$GODOT" --headless --export-release "iOS" build/ios/ggjumps.ipa
           ls build/ios
+
+      # The AdMob plugin queues its Xcode patch (Google's SDK as a Swift package) for after the
+      # export, which a one-shot headless run never reaches, so apply it here.
+      - name: Add Google's SDK to the Xcode project
+        run: |
+          "$GODOT" --headless --script res://tools/ci/patch_xcodeproj.gd -- build/ios/ggjumps.xcodeproj/project.pbxproj
+          grep -qE "admob_spm|XCLocalSwiftPackageReference" build/ios/ggjumps.xcodeproj/project.pbxproj || { echo "AdMob packages were not added to the Xcode project"; exit 1; }
 
       # Godot calls every iOS plugin's deinit hook (written into dummy.cpp; named
       # godot_apple_embedded_plugins_deinitialize since Godot 4.5, godot_ios_plugins_deinitialize
