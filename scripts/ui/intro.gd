@@ -9,6 +9,7 @@ extends Control
 signal finished
 
 const Logo := preload("res://scripts/ui/logo.gd")
+const WaterView := preload("res://scripts/water_view.gd")
 
 ## Same as the boot splash colour (project.godot), so the hand-over is seamless.
 const BOOT_COLOR := Color(0.05, 0.28, 0.45)
@@ -47,15 +48,12 @@ func _ready() -> void:
 	_from = _center + Vector2(-180, 70)
 	_to = _center + Vector2(180, 70)
 
-	var water := ColorRect.new()
+	var water := WaterView.new()
 	water.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
-	water.mouse_filter = MOUSE_FILTER_IGNORE
 	water.z_index = -10  # under the splash's water rings (drawn a little below the fx node)
-	_water_mat = ShaderMaterial.new()
-	_water_mat.shader = load("res://shaders/water.gdshader")
+	_water_mat = water.material_ref
 	_water_mat.set_shader_parameter("area", view)
 	_water_mat.set_shader_parameter("origin", Vector2(-600, 900))
-	water.material = _water_mat
 	add_child(water)
 	_fx = Fx.new()
 	add_child(_fx)

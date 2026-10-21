@@ -37,6 +37,7 @@ const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const LeaderboardView := preload("res://scripts/ui/leaderboard_view.gd")
 const Congrats := preload("res://scripts/ui/congrats.gd")
 const Intro := preload("res://scripts/ui/intro.gd")
+const WaterView := preload("res://scripts/water_view.gd")
 const Fireworks := preload("res://scripts/fireworks.gd")
 const GameOver := preload("res://scripts/ui/game_over.gd")
 const MockAd := preload("res://scripts/ui/mock_ad.gd")
@@ -85,7 +86,7 @@ var _aim_taps := 0
 var _aim_tap_time := 0.0
 var _water_tap_time := -1.0
 var _water_tap_at := Vector2.ZERO
-var _water: ColorRect
+var _water: Control
 var _water_mat: ShaderMaterial
 
 var _dragging := false
@@ -121,11 +122,8 @@ func _build_nodes() -> void:
 	var bg := CanvasLayer.new()
 	bg.layer = -10
 	add_child(bg)
-	_water = ColorRect.new()
-	_water.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_water_mat = ShaderMaterial.new()
-	_water_mat.shader = load("res://shaders/water.gdshader")
-	_water.material = _water_mat
+	_water = WaterView.new()
+	_water_mat = _water.material_ref
 	bg.add_child(_water)
 	_water.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -500,6 +498,8 @@ func _input(event: InputEvent) -> void:
 				_set_ids(not show_ids)
 			elif show_tools and _hud.intro_rect().has_point(event.position):
 				_show_intro()
+			elif show_tools and _hud.fps_rect().has_point(event.position):
+				_hud.show_fps = not _hud.show_fps
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif placing:
@@ -645,6 +645,7 @@ func _tap_lives() -> void:
 		_set_placing(false)
 		debug_aim = false
 		keep_lives = false
+		_hud.show_fps = false
 		_set_ids(false)
 	elif not show_tools and _aim_taps >= AIM_TAPS:
 		_aim_taps = 0

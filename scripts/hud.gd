@@ -28,6 +28,12 @@ var radar := false
 var keep := false
 var ids := false
 var place := false
+var show_fps := false  # tools: frame rate readout under the score
+
+var _fps_frames := 0
+var _fps_time := 0.0
+var _fps_worst := 0.0
+var _fps_text := ""
 
 var _drop_pulse := 0.0
 var _fill := 0.0  # the life meter's shown level, eased towards drops / DROPS_SLOTS
@@ -90,6 +96,10 @@ func intro_rect() -> Rect2:
 	return _tool_rect(4)
 
 
+func fps_rect() -> Rect2:
+	return _tool_rect(5)
+
+
 ## Bottom-left: opens the leaderboard.
 func board_rect() -> Rect2:
 	return Rect2(18.0, size.y - 52.0 - 18.0 - bottom_inset, 52.0, 52.0)
@@ -113,6 +123,8 @@ func set_pickups(d: int, radar: float, merging: float) -> void:
 
 func _process(delta: float) -> void:
 	_drop_pulse = maxf(_drop_pulse - delta, 0.0)
+	if show_fps:
+		_count_frame(delta)
 	_pop = maxf(_pop - delta * 2.0, 0.0)
 	if drops == 0:
 		if _fill > 0.98:
@@ -201,6 +213,9 @@ func _draw() -> void:
 		_tool_button(ids_rect(), ids, 2)
 		_tool_button(place_rect(), place, 3)
 		_tool_button(intro_rect(), false, 4)
+		_tool_button(fps_rect(), show_fps, 5)
+	if show_fps and _fps_text != "":
+		_text(_bold, Vector2(18.0, top + 82.0), _fps_text, 20, Color.WHITE)
 
 	var br := board_rect()
 	var bsb := _pill.duplicate() as StyleBoxFlat
@@ -217,6 +232,23 @@ func _draw() -> void:
 		_text_c(_bold, card.position.y + 105.0, title, 64, Color.WHITE)
 		_text_c(_medium, card.position.y + 160.0, "%d / %d islands" % [best + 1, total], 28, Color(0.72, 0.92, 1.0))
 		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
+
+
+## Frame rate over the last half second, the slowest frame in it and the screen's refresh
+## rate: "58 fps  worst 24 ms  120 Hz". Steady at the refresh rate (or exactly half) is smooth;
+## a high worst time means hitches.
+func _count_frame(delta: float) -> void:
+	_fps_frames += 1
+	_fps_time += delta
+	_fps_worst = maxf(_fps_worst, delta)
+	if _fps_time < 0.5:
+		return
+	var hz := DisplayServer.screen_get_refresh_rate()
+	_fps_text = "%d fps  worst %d ms%s" % [roundi(_fps_frames / _fps_time), roundi(_fps_worst * 1000.0),
+		"  %d Hz" % roundi(hz) if hz > 0.0 else ""]
+	_fps_frames = 0
+	_fps_time = 0.0
+	_fps_worst = 0.0
 
 
 ## The life meter's pill, just left of the lives pill and the same height.
@@ -289,6 +321,8 @@ func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-8, -4), c + Vector2(8, -4), c + Vector2(0, 14)]), col)
 			draw_circle(c + Vector2(0, -5), 9.0, col)
 			draw_circle(c + Vector2(0, -5), 3.5, Color(0.02, 0.14, 0.26))
+		5:  # frame rate: "fps"
+			draw_string(_bold, Vector2(r.position.x, c.y + 6.0), "fps", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 17, col)
 		4:  # replay the welcome screen: play triangle
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-7, -11), c + Vector2(11, 0), c + Vector2(-7, 11)]), col)
 
