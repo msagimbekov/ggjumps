@@ -2,13 +2,14 @@ class_name SettingsPanel
 extends Control
 ## Gear button in the bottom-right corner; it opens the Settings window: music and effects
 ## volume (each with an icon that mutes it and brings the old volume back), then the bubble colour,
-## a way back to the "How to play" cards, and the privacy policy (with Privacy options where the
+## a way back to the "How to play" cards, a link to the privacy policy (with Privacy options where the
 ## ads' consent form must be reachable).
 ## Taps come from main.gd through handle(), before the game sees them.
 
 const Modal := preload("res://scripts/ui/modal.gd")
 const SoundRow := preload("res://scripts/ui/sound_row.gd")
 const SkinRow := preload("res://scripts/ui/skin_row.gd")
+const ExternalLink := preload("res://scripts/ui/external_link.gd")
 const BUTTON := 52.0
 const PRIVACY_URL := "https://msagimbekov.github.io/ggjumps/privacy.html"
 
@@ -71,6 +72,7 @@ func open() -> void:
 		if on_how_to.is_valid():
 			on_how_to.call())
 	m.content.add_child(how)
+	m.content.add_child(ExternalLink.new("Privacy policy", PRIVACY_URL))
 	if ads and ads.privacy_options_required():
 		var privacy := Button.new()
 		privacy.text = "Privacy options"
@@ -79,11 +81,6 @@ func open() -> void:
 			m.close()
 			ads.show_privacy_options())
 		m.content.add_child(privacy)
-	var policy := Button.new()
-	policy.text = "Privacy policy"
-	policy.theme_type_variation = "GhostButton"
-	policy.pressed.connect(func(): OS.shell_open(PRIVACY_URL))
-	m.content.add_child(policy)
 	m.closed.connect(_on_closed)
 	modal_parent.add_child(m)
 	queue_redraw()
