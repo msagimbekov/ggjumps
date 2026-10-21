@@ -43,22 +43,22 @@
   {
    "platform": "iOS",
    "shape": "c53ce0b05fdc4dcb754d890b1edd9b291ea43333e24aa604c462eee7bd97629c",
-   "app": "0.1.7",
-   "version": 9,
-   "file": "ios-0.1.7-9.pck",
-   "sha256": "d8cac860c6a9febfa317ff1e565ff0d6feb4b19d31fdbf267118c9eaea079b78",
-   "signature": "qVnwZlxi9wi3SirYTOZnRN65QvTT3pek+YXkLX6uLB3MgV3X5lKTCCl5mqtm3ZtmgxZ2PgOxzbAb0z/KyAbWROp57JnkzbyR8QUqqU/toc1ZqfcvOUDPnB04deGpobvDsu0D2k6v753Hg8eKpqLeGegvxQEZ/KL1eqykKGMTCJ8rSXgh8TZjBuckYlGKN4KsrPQFftif9dQVR9zfaZU88P8nc2XoOLrv1987ZOiNthH75Jt/Mx5CggLpi35kqyyjJwzLiNoyYqpdnG1GXSEKzyoYymWoKanqL2WzIKPVTD5q4AJaC8BOZ4THxcDRgXHFOM8UjRB8TZ93DvDW0ejSqw==",
-   "commit": "ea179e0"
+   "app": "0.1.8",
+   "version": 10,
+   "file": "ios-0.1.8-10.pck",
+   "sha256": "89cce3a477b43dbdc8377121deab6eb1cbc0ee3055e8b9bbce66f51b7c89be43",
+   "signature": "ySVzf1deBBpYxuVvQppeyfF//+atYb5hie1w2DHfS9PRwIOq+WfgvRvHoQkTXE1JSqkYF335YH86oLBj+NAaNWcmioQsxetpoF4b0JCQkZ0T1Jika6MBnh2h5pv2jAynMtsS4EjUVmGyiMN5sQYiMq1+lRG6U+7mHOnXRFLHDWtbS9z3XjFf3z+Y5OpueBITCel1oiysY1eKMkNMteIE87h+Gy1L339OLwwmwD5cBttQ1ujqOejtm1xxJC5lYTXF1kZr4HdhkPgsbouZy/xquNsNGlMrgGkePStN2F7DCSk+FV+MyBTEnHuky76Zq0YaU4fCu5vMPYPKKDdUcyiY5Q==",
+   "commit": "ca6357b"
   },
   {
    "platform": "Android",
    "shape": "c53ce0b05fdc4dcb754d890b1edd9b291ea43333e24aa604c462eee7bd97629c",
-   "app": "0.1.7",
-   "version": 9,
-   "file": "android-0.1.7-9.pck",
-   "sha256": "f3e1850eb31b65ea32fd9deae87e9e0d58c4be72fdc841e60025068609cdde70",
-   "signature": "udaP9njBsdhqrBbNbgpCFIUTNxZqa8YNxd/4OE6bRRgg1iQuu/ofjVI3cDzaE6iDF2rdfluK7A/v/IYvtv1HeBVqNKiNpDebtoVlYef/5PwinDe4IHaSB/PfGulNymOn3CVoGt8vLEfQ8AqzbqU+WKGJJCl+cOxAmJkOU5q5LLmS9mXEcO2qoVICN074PecIOso6hywZb7tS5+Tn+9q12e2oLtNQ3ihZrGCU4lvJFQ8MNUqTM3+fcfBCSGWqguzxt3XNTboddOsSwvUWH3d8rUsriCDAIN0ShZCqcnl2nmB1hxpwacI6VO6mFrjYLfHm2LWBVInhHBfZ84Vl1yV5qQ==",
-   "commit": "ea179e0"
+   "app": "0.1.8",
+   "version": 10,
+   "file": "android-0.1.8-10.pck",
+   "sha256": "2df4381d87b1675a73c926e01f690b758ea7437f9d5ed61375ad7af824eab686",
+   "signature": "XovY41HEgWmhQ1ba5TXSHBpRYulOSER+MAcHw3VfS+y8sF1mGBt+FgOU2H3G2QijK5nfyP4L9jzGChTBcZs7Nj3Fo+3eaT9OMGbweWrXAYjk/MCf/qVrvargM6Ltwd08MewRAVtj/nQFd4Oo4h1Pms9mjXVY8tT31gAet1x83tgWrSUeAbcN5yZ7EGw8xsTY3x5wp4R338CpIMk01FBBrvu54xa+uXcCGHhyDjOYm4i+VhQJE8k+ntHod14wNZfX8nj58cZuVy8pghqrDQ/asYcO3iW8mGiWLBedVMHTJCpN6+0nHtSTZPon5QxzHH9GaySgxU4es0+UiW53ISV51g==",
+   "commit": "ca6357b"
   }
  ]
 }
