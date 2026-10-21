@@ -128,7 +128,12 @@ jobs:
           find android/build -name "*.import" -delete
           "$GODOT" --headless --export-release "Android" "$FILE"
           [ -s "$FILE" ] || { echo "Export failed"; exit 1; }
-          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "$FILE" | head -3
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$FILE" | head -3
+          # Play's advertising ID declaration says "yes" (AdMob): without this permission the ID is
+          # zeroed and Play flags the release.
+          "$BUILD_TOOLS/aapt2" dump permissions "$FILE" | tee /dev/stderr | grep -q "com.google.android.gms.permission.AD_ID" \
+            || { echo "AD_ID permission missing from the manifest"; exit 1; }
           ls -la build/android
 
       # Google Play takes an app bundle (.aab), not an APK. Same signing key.
@@ -153,12 +158,17 @@ jobs:
             echo "$(basename "$f") align=$align" >> "$GITHUB_STEP_SUMMARY"
           done
 
+      # Separate downloads: the .aab for Google Play, the .apk for installing by hand.
       - uses: actions/upload-artifact@v4
         with:
-          name: 99jumps-android-${{ env.APP_VERSION }}-${{ github.run_number }}
-          path: |
-            build/android/*.apk
-            build/android/*.aab
+          name: 99jumps-aab-${{ env.APP_VERSION }}-${{ github.run_number }}
+          path: build/android/*.aab
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 99jumps-apk-${{ env.APP_VERSION }}-${{ github.run_number }}
+          path: build/android/*.apk
           retention-days: 30
 
       - name: Clean up the keys
