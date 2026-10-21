@@ -16,7 +16,7 @@ const ISLANDS := 100
 ## Where to get the game, at the end of the shared message. APP_STORE stays empty until the
 ## App Store listing has its id (https://apps.apple.com/app/id<number>); empty links are left out.
 const APP_STORE := ""
-const GOOGLE_PLAY := "https://play.google.com/store/apps/details?id=com.ggjumps.app"
+const GOOGLE_PLAY := "https://play.google.com/store/apps/details?id=com.ggcuts.jumps"
 ## The stores' own badges (Apple's SVG, Google's PNG cropped to its border), drawn at the same
 ## height. Badge artwork must not be altered: only scaled.
 const APP_STORE_BADGE := preload("res://ui/badges/app_store.svg")
