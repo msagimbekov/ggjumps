@@ -29,6 +29,7 @@ var keep := false
 var ids := false
 var place := false
 var show_fps := false  # tools: frame rate readout under the score
+var cap60 := false  # tools: frame rate capped at 60
 var no_water := false  # tools: the sea is hidden (second tap on "fps"), to compare frame times
 var water_viewport: RID  # also timed in the readout (the sea renders in its own viewport)
 
@@ -42,7 +43,8 @@ var _fps_text := ""
 var _fps_detail := ""
 
 var _drop_pulse := 0.0
-var _fill := 0.0  # the life meter's shown level, eased towards drops / DROPS_SLOTS
+var _fill := 0.0  # the life meter's shown level: drops / DROPS_SLOTS
+var _was_moving := false
 var _pop := 0.0  # 1..0: the full meter just turned into a life
 var _life_flash := 0.0
 var _bold: FontVariation
@@ -106,6 +108,10 @@ func fps_rect() -> Rect2:
 	return _tool_rect(5)
 
 
+func cap_rect() -> Rect2:
+	return _tool_rect(6)
+
+
 ## Bottom-left: opens the leaderboard.
 func board_rect() -> Rect2:
 	return Rect2(18.0, size.y - 52.0 - 18.0 - bottom_inset, 52.0, 52.0)
@@ -132,14 +138,18 @@ func _process(delta: float) -> void:
 	if show_fps:
 		_count_frame(delta)
 	_pop = maxf(_pop - delta * 2.0, 0.0)
-	if drops == 0:
-		if _fill > 0.98:
-			_pop = 1.0
-		_fill = 0.0
-	else:
-		_fill = move_toward(_fill, float(drops) / DROPS_SLOTS, delta * 2.5)
+	var fill := float(drops) / DROPS_SLOTS
+	if drops == 0 and _fill > 0.98:
+		_pop = 1.0
+	if fill != _fill:
+		_fill = fill
+		queue_redraw()
 	_life_flash = maxf(_life_flash - delta, 0.0)
-	queue_redraw()  # the collected drops wobble
+	# Redraw only while something moves (and once more as it stops): the HUD is static otherwise.
+	var moving := _drop_pulse > 0.0 or _pop > 0.0 or _life_flash > 0.0 or show_fps or radar_left > 0.0 or merge > 0.0
+	if moving or _was_moving:
+		queue_redraw()
+	_was_moving = moving
 
 
 func set_info(b: int, l: int, t: String, s: String) -> void:
@@ -204,10 +214,9 @@ func _draw() -> void:
 	draw_style_box(_pill, meter)
 	_meter_bubble(meter.get_center())
 
-	# Radar countdown, centred in the gap between the score and the meter.
-	var gap_mid := (pill.end.x + meter.position.x) * 0.5
+	# Spyglass countdown (the landing line; called radar in the code), right after the score.
 	if radar_left > 0.0:
-		var rp := Rect2(gap_mid - 22.0, top + 4.0, 44.0, 44.0)
+		var rp := Rect2(pill.end.x + 10.0, top + 4.0, 44.0, 44.0)
 		draw_style_box(_pill, rp)
 		var rc := rp.get_center()
 		Pickup.draw_box(self, rc, 0.62, Pickup.Kind.RADAR, 1.0, 0.35 + 0.65 * Pickup.radar_alpha(radar_left), radar_left * 2.5)
@@ -220,6 +229,7 @@ func _draw() -> void:
 		_tool_button(place_rect(), place, 3)
 		_tool_button(intro_rect(), false, 4)
 		_tool_button(fps_rect(), show_fps, 5)
+		_tool_button(cap_rect(), cap60, 6)
 	if show_fps and _fps_text != "":
 		_text(_bold, Vector2(18.0, top + 82.0), _fps_text, 20, Color.WHITE)
 		_text(_medium, Vector2(18.0, top + 106.0), _fps_detail, 18, Color(1, 1, 1, 0.85))
@@ -263,7 +273,7 @@ func _count_frame(delta: float) -> void:
 		return
 	var hz := DisplayServer.screen_get_refresh_rate()
 	_fps_text = "%d fps  worst %d ms%s%s" % [roundi(_fps_frames / _fps_time), roundi(_fps_worst * 1000.0),
-		"  %d Hz" % roundi(hz) if hz > 0.0 else "", "  no water" if no_water else ""]
+		"  %d Hz" % roundi(hz) if hz > 0.0 else "", ("  no water" if no_water else "") + ("  cap 60" if cap60 else "")]
 	var n := float(_fps_frames)
 	_fps_detail = "game %.1f  render %.1f  gpu %.1f ms" % [_fps_script / n, _fps_cpu / n, _fps_gpu / n]
 	_fps_frames = 0
@@ -280,24 +290,18 @@ func meter_rect() -> Rect2:
 	return Rect2(lp.position.x - 10.0 - lp.size.y, lp.position.y, lp.size.y, lp.size.y)
 
 
-## The meter: an empty life ring that fills with the bubble's liquid from the bottom, the surface
-## gently waving; full it shows as a whole life, then bursts (a ring) when it empties.
+## The meter: an empty life ring filled from the bottom with the bubble's colour, a third per
+## drop (a flat, still level); full it shows as a whole life, then bursts (a ring) when it empties.
 func _meter_bubble(c: Vector2) -> void:
 	var r := 13.0 * (1.0 + 0.25 * sin(PI * _drop_pulse / 0.5) if _drop_pulse > 0.0 else 1.0)
 	draw_circle(c, r, Color(1, 1, 1, 0.07))
 	if _fill > 0.0:
-		var t := Time.get_ticks_msec() * 0.001
 		var circle := PackedVector2Array()
 		for n in 32:
 			circle.append(c + Vector2.from_angle(TAU * n / 32.0) * r)
 		var level := c.y + r - 2.0 * r * _fill
-		var wave := 1.4 * (1.0 - _fill) * 4.0 * _fill  # flat when empty or full
-		var water := PackedVector2Array()
-		for n in 9:
-			var x := c.x - r - 1.0 + (2.0 * r + 2.0) * n / 8.0
-			water.append(Vector2(x, level + wave * sin(x * 0.45 + t * 4.0)))
-		water.append(Vector2(c.x + r + 1.0, c.y + r + 1.0))
-		water.append(Vector2(c.x - r - 1.0, c.y + r + 1.0))
+		var water := PackedVector2Array([Vector2(c.x - r - 1.0, level), Vector2(c.x + r + 1.0, level),
+			Vector2(c.x + r + 1.0, c.y + r + 1.0), Vector2(c.x - r - 1.0, c.y + r + 1.0)])
 		for part in Geometry2D.intersect_polygons(circle, water):
 			draw_colored_polygon(part, Skins.color("body"))
 		if _fill > 0.98:
@@ -344,6 +348,8 @@ func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-8, -4), c + Vector2(8, -4), c + Vector2(0, 14)]), col)
 			draw_circle(c + Vector2(0, -5), 9.0, col)
 			draw_circle(c + Vector2(0, -5), 3.5, Color(0.02, 0.14, 0.26))
+		6:  # frame rate cap: "60"
+			draw_string(_bold, Vector2(r.position.x, c.y + 7.0), "60", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 20, col)
 		5:  # frame rate: "fps"
 			draw_string(_bold, Vector2(r.position.x, c.y + 6.0), "fps", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 17, col)
 		4:  # replay the welcome screen: play triangle

@@ -1,6 +1,6 @@
 class_name Pickup
 extends Node2D
-## A collectable sitting on an island. LIFE: a small bubble, three of them make a bigger one (a life). RADAR: a gold radar lens, switches the landing line on for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
+## A collectable sitting on an island. LIFE: a small bubble, three of them make a bigger one (a life). RADAR: a gold lens, the "spyglass" to players, switches the landing line on for a while. Collected by settling on it; settling on its island anywhere else makes it vanish.
 ## Child of its Land, so it rides along on moving islands.
 
 enum Kind { LIFE, RADAR }

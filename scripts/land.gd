@@ -10,6 +10,7 @@ const BELT_SPEED := 35.0
 const BELT_HALF := Vector2(56.0, 90.0)  # every treadmill is this size, always vertical
 const SWAY_SPEED := 0.9  # rad/s
 const SWAY_AMP := 48.0
+const REDRAW_EVERY := 1.0 / 30.0  # seconds between shore-wave redraws
 
 var index := 0
 var kind := Kind.GRASS
@@ -36,6 +37,7 @@ var _base := Vector2.ZERO
 var _sway_phase := 0.0
 var _t := 0.0
 var _show_id := false
+var _redraw_wait := 0.0
 
 
 ## `belt_sign` only matters for treadmills: +1 carries the bubble "forward" (up the screen).
@@ -154,8 +156,13 @@ func _offset(pg: PackedVector2Array, d: float) -> PackedVector2Array:
 
 func _process(delta: float) -> void:
 	_t += delta
-	# Only redraw (shore waves) while on screen: the islands kept active around the bubble
-	# reach well past the view, and each redraw rebuilds all their shapes.
+	# The shore waves are slow: redraw them 30 times a second, and only while on screen (the
+	# islands kept active around the bubble reach well past the view; each redraw rebuilds
+	# all their shapes).
+	_redraw_wait -= delta
+	if _redraw_wait > 0.0:
+		return
+	_redraw_wait = REDRAW_EVERY
 	var y := get_global_transform_with_canvas().origin.y
 	var margin := radius_max + 40.0
 	if y > -margin and y < get_viewport_rect().size.y + margin:

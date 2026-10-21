@@ -1,7 +1,8 @@
 class_name SettingsPanel
 extends Control
 ## Gear button in the bottom-right corner; it opens the Settings window: music and effects
-## volume (each with an icon that mutes it and brings the old volume back), then the bubble colour.
+## volume (each with an icon that mutes it and brings the old volume back), then the bubble colour,
+## and a way back to the "How to play" cards.
 ## Taps come from main.gd through handle(), before the game sees them.
 
 const Modal := preload("res://scripts/ui/modal.gd")
@@ -12,6 +13,7 @@ const BUTTON := 52.0
 var sound: Sound
 var modal_parent: Node  # layer the window opens in
 var on_skin_change: Callable  # the bubble colour was changed
+var on_how_to: Callable  # opens the "How to play" cards
 var bottom_inset := 0.0  # home indicator / nav bar, in viewport units
 var is_open := false
 
@@ -58,6 +60,14 @@ func open() -> void:
 	var skins := SkinRow.new()
 	skins.on_change = on_skin_change
 	m.content.add_child(skins)
+	var how := Button.new()
+	how.text = "How to play"
+	how.theme_type_variation = "GhostButton"
+	how.pressed.connect(func():
+		m.close()
+		if on_how_to.is_valid():
+			on_how_to.call())
+	m.content.add_child(how)
 	m.closed.connect(_on_closed)
 	modal_parent.add_child(m)
 	queue_redraw()

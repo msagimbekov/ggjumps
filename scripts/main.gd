@@ -9,6 +9,7 @@ const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump
 const GRAB_RADIUS := 90.0
+const NO_AD_FROM := 90  # from this island on, running out of lives means starting over (no ad)
 const DOUBLE_TAP := 0.35  # seconds between the taps of a double tap on the water (a fish leaps there)
 const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
@@ -37,6 +38,7 @@ const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const LeaderboardView := preload("res://scripts/ui/leaderboard_view.gd")
 const Congrats := preload("res://scripts/ui/congrats.gd")
 const Intro := preload("res://scripts/ui/intro.gd")
+const HowTo := preload("res://scripts/ui/how_to.gd")
 const WaterView := preload("res://scripts/water_view.gd")
 const Fireworks := preload("res://scripts/fireworks.gd")
 const GameOver := preload("res://scripts/ui/game_over.gd")
@@ -108,8 +110,11 @@ func _ready() -> void:
 	_place_pickups()
 	_restart()
 	# The welcome animation over the first moments (skipped with `-- --no-intro`, for previews).
+	# On the very first launch the "How to play" cards follow it.
 	if not "--no-intro" in OS.get_cmdline_user_args():
-		_show_intro()
+		var intro := _show_intro()
+		if not HowTo.seen():
+			intro.finished.connect(_show_how_to)
 	# The game is up: a patched launch counts as good, then look for a newer patch (applies next launch).
 	# Looked up by path so the headless level check (no autoloads) still compiles this script.
 	var ota := get_node_or_null("/root/Ota")
@@ -187,6 +192,7 @@ func _build_nodes() -> void:
 	add_child(_modals)
 	_settings.modal_parent = _modals
 	_settings.on_skin_change = _on_skin_change
+	_settings.on_how_to = _show_how_to
 
 
 ## Same layout on every device: one seeded RNG, always drawing the same numbers per attempt.
@@ -500,6 +506,8 @@ func _input(event: InputEvent) -> void:
 				_show_intro()
 			elif show_tools and _hud.fps_rect().has_point(event.position):
 				_cycle_fps()
+			elif show_tools and _hud.cap_rect().has_point(event.position):
+				_set_cap60(not _hud.cap60)
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif placing:
@@ -598,11 +606,25 @@ func _cycle_fps() -> void:
 	_hud.water_viewport = vp.get_viewport_rid()
 
 
+## Tools "60" button: caps the frame rate at 60 (a steady 60 can look smoother than an uneven
+## 45-70 on a 120 Hz screen).
+func _set_cap60(on: bool) -> void:
+	_hud.cap60 = on
+	Engine.max_fps = 60 if on else 0
+	_hud.queue_redraw()
+
+
 ## The welcome animation; also replayed from the tools panel for testing.
-func _show_intro() -> void:
+func _show_intro() -> Control:
 	var intro := Intro.new()
 	intro.play_sound = _sound.play
 	_modals.add_child(intro)
+	return intro
+
+
+## The "How to play" cards (first launch, and from Settings).
+func _show_how_to() -> void:
+	_modals.add_child(HowTo.new())
 
 
 ## The last island: a fanfare and fireworks, then the congratulations window.
@@ -664,6 +686,7 @@ func _tap_lives() -> void:
 		_hud.show_fps = true
 		_hud.no_water = true
 		_cycle_fps()  # back to off, with the sea shown
+		_set_cap60(false)
 		_set_ids(false)
 	elif not show_tools and _aim_taps >= AIM_TAPS:
 		_aim_taps = 0
@@ -836,7 +859,7 @@ func _resolve_pickup(l: Land) -> void:
 		radar_time = RADAR_TIME
 		_radar_ping = RADAR_PING + 0.6
 		_sound.play("radar_on")
-		p.collect("Radar %ds" % int(RADAR_TIME))
+		p.collect("Spyglass %ds" % int(RADAR_TIME))
 	else:
 		if _drops_hold > 0.0:
 			drops = 0
@@ -916,14 +939,16 @@ func _after_fall() -> void:
 
 ## A new bubble colour: redraw the drops on islands that are not animating right now.
 func _on_skin_change() -> void:
+	_hud.queue_redraw()
 	for l in lands:
 		if l.pickup:
 			l.pickup.queue_redraw()
 
 
-## Out of lives: watch an ad for one more life, or start over.
+## Out of lives: watch an ad for one more life, or start over. From island NO_AD_FROM on there
+## is no ad: the last stretch is the player's own.
 func _show_game_over() -> void:
-	var g := GameOver.new(best + 1, TOTAL_JUMPS + 1)
+	var g := GameOver.new(best + 1, TOTAL_JUMPS + 1, best + 1 < NO_AD_FROM)
 	g.watch_ad.connect(_show_ad)
 	g.retry.connect(_restart)
 	_modals.add_child(g)
