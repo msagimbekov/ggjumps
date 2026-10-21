@@ -1,6 +1,6 @@
 extends RefCounted
-## The system share sheet: text plus an image, through cengiz-pz's Share singleton (iOS:
-## res://ios/plugins, Android: addons/share). Without it (desktop, or a build without the
+## The system share sheet: text plus an image, through the Share plugin's native singleton
+## (v5.0; iOS: res://ios/plugins, Android: addons/share). Without it (desktop, or a build without the
 ## plugin that an OTA patch reached) the text goes to the clipboard and the image is saved to
 ## user:// instead. No class_name, so the OTA shape doesn't change.
 
@@ -15,11 +15,12 @@ static func available() -> bool:
 
 ## Opens the share sheet; returns false when there was none and the text was copied instead.
 static func share(title: String, text: String, image: Image = null) -> bool:
-	var data := {"title": title, "subject": title, "content": text}
+	var data := {"title": title, "subject": title, "content": text, "mime_type": "text/plain"}
 	if image != null:
 		var path := image_path()
 		if image.save_png(path) == OK:
-			data["image_path"] = path
+			data["file_path"] = path
+			data["mime_type"] = "image/*"
 	if available():
 		Engine.get_singleton(SINGLETON).share(data)
 		return true
