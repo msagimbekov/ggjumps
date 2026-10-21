@@ -154,7 +154,12 @@ func _offset(pg: PackedVector2Array, d: float) -> PackedVector2Array:
 
 func _process(delta: float) -> void:
 	_t += delta
-	queue_redraw()
+	# Only redraw (shore waves) while on screen: the islands kept active around the bubble
+	# reach well past the view, and each redraw rebuilds all their shapes.
+	var y := get_global_transform_with_canvas().origin.y
+	var margin := radius_max + 40.0
+	if y > -margin and y < get_viewport_rect().size.y + margin:
+		queue_redraw()
 
 
 func _draw() -> void:

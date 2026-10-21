@@ -29,11 +29,17 @@ var keep := false
 var ids := false
 var place := false
 var show_fps := false  # tools: frame rate readout under the score
+var no_water := false  # tools: the sea is hidden (second tap on "fps"), to compare frame times
+var water_viewport: RID  # also timed in the readout (the sea renders in its own viewport)
 
 var _fps_frames := 0
 var _fps_time := 0.0
 var _fps_worst := 0.0
+var _fps_script := 0.0
+var _fps_cpu := 0.0
+var _fps_gpu := 0.0
 var _fps_text := ""
+var _fps_detail := ""
 
 var _drop_pulse := 0.0
 var _fill := 0.0  # the life meter's shown level, eased towards drops / DROPS_SLOTS
@@ -216,6 +222,7 @@ func _draw() -> void:
 		_tool_button(fps_rect(), show_fps, 5)
 	if show_fps and _fps_text != "":
 		_text(_bold, Vector2(18.0, top + 82.0), _fps_text, 20, Color.WHITE)
+		_text(_medium, Vector2(18.0, top + 106.0), _fps_detail, 18, Color(1, 1, 1, 0.85))
 
 	var br := board_rect()
 	var bsb := _pill.duplicate() as StyleBoxFlat
@@ -236,19 +243,35 @@ func _draw() -> void:
 
 ## Frame rate over the last half second, the slowest frame in it and the screen's refresh
 ## rate: "58 fps  worst 24 ms  120 Hz". Steady at the refresh rate (or exactly half) is smooth;
-## a high worst time means hitches.
+## a high worst time means hitches. The second line splits an average frame: game logic,
+## the renderer's CPU work and the GPU's (0 where the driver can't time it), in ms.
 func _count_frame(delta: float) -> void:
+	var rids := [get_viewport().get_viewport_rid(), water_viewport]
+	if _fps_frames == 0:
+		for rid: RID in rids:
+			if rid.is_valid():
+				RenderingServer.viewport_set_measure_render_time(rid, true)
 	_fps_frames += 1
 	_fps_time += delta
 	_fps_worst = maxf(_fps_worst, delta)
+	_fps_script += Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	for rid: RID in rids:
+		if rid.is_valid():
+			_fps_cpu += RenderingServer.viewport_get_measured_render_time_cpu(rid)
+			_fps_gpu += RenderingServer.viewport_get_measured_render_time_gpu(rid)
 	if _fps_time < 0.5:
 		return
 	var hz := DisplayServer.screen_get_refresh_rate()
-	_fps_text = "%d fps  worst %d ms%s" % [roundi(_fps_frames / _fps_time), roundi(_fps_worst * 1000.0),
-		"  %d Hz" % roundi(hz) if hz > 0.0 else ""]
+	_fps_text = "%d fps  worst %d ms%s%s" % [roundi(_fps_frames / _fps_time), roundi(_fps_worst * 1000.0),
+		"  %d Hz" % roundi(hz) if hz > 0.0 else "", "  no water" if no_water else ""]
+	var n := float(_fps_frames)
+	_fps_detail = "game %.1f  render %.1f  gpu %.1f ms" % [_fps_script / n, _fps_cpu / n, _fps_gpu / n]
 	_fps_frames = 0
 	_fps_time = 0.0
 	_fps_worst = 0.0
+	_fps_script = 0.0
+	_fps_cpu = 0.0
+	_fps_gpu = 0.0
 
 
 ## The life meter's pill, just left of the lives pill and the same height.

@@ -499,7 +499,7 @@ func _input(event: InputEvent) -> void:
 			elif show_tools and _hud.intro_rect().has_point(event.position):
 				_show_intro()
 			elif show_tools and _hud.fps_rect().has_point(event.position):
-				_hud.show_fps = not _hud.show_fps
+				_cycle_fps()
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif placing:
@@ -582,6 +582,22 @@ func _place_at(screen: Vector2) -> void:
 			return
 
 
+## Tools "fps" button: off -> frame rate readout -> readout with the sea hidden (to see what the
+## sea costs on this device) -> off.
+func _cycle_fps() -> void:
+	if not _hud.show_fps:
+		_hud.show_fps = true
+	elif not _hud.no_water:
+		_hud.no_water = true
+	else:
+		_hud.show_fps = false
+		_hud.no_water = false
+	_water.visible = not _hud.no_water
+	var vp: SubViewport = _water.get_child(0)
+	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED if _hud.no_water else SubViewport.UPDATE_ALWAYS
+	_hud.water_viewport = vp.get_viewport_rid()
+
+
 ## The welcome animation; also replayed from the tools panel for testing.
 func _show_intro() -> void:
 	var intro := Intro.new()
@@ -645,7 +661,9 @@ func _tap_lives() -> void:
 		_set_placing(false)
 		debug_aim = false
 		keep_lives = false
-		_hud.show_fps = false
+		_hud.show_fps = true
+		_hud.no_water = true
+		_cycle_fps()  # back to off, with the sea shown
 		_set_ids(false)
 	elif not show_tools and _aim_taps >= AIM_TAPS:
 		_aim_taps = 0
