@@ -16,7 +16,7 @@ general/ios/app_id="ca-app-pub-3037344212716368~3930640098"
 [application]
 
 config/name="99 jumps"
-config/version="0.2.2"
+config/version="0.2.3"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 boot_splash/bg_color=Color(0.05, 0.28, 0.45, 1)

@@ -8,7 +8,9 @@ const START_LIVES := 3
 const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump
-const GRAB_RADIUS := 90.0
+## A press this close to the bubble grabs it (5 bubble radii), so it can be pulled even when it
+## sits at the edge of the screen.
+const GRAB_RADIUS := Bubble.R * 5.0
 const NO_AD_FROM := 90  # from this island on, running out of lives means starting over (no ad)
 const DOUBLE_TAP := 0.35  # seconds between the taps of a double tap on the water (a fish leaps there)
 const SLIDE_SPEED := 560.0
@@ -95,7 +97,8 @@ var _water: Control
 var _water_mat: ShaderMaterial
 
 var _dragging := false
-var _drag := Vector2.ZERO  # bubble to pointer, clamped to MAX_DRAG
+var _drag := Vector2.ZERO  # press point to pointer, clamped to MAX_DRAG
+var _grab_offset := Vector2.ZERO  # where the finger went down, from the bubble (follows a moving island)
 var _fly_from := Vector2.ZERO
 var _fly_to := Vector2.ZERO
 var _fly_dir := Vector2.UP
@@ -527,6 +530,7 @@ func _input(event: InputEvent) -> void:
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
 				_dragging = true
 				_drag = Vector2.ZERO
+				_grab_offset = get_global_mouse_position() - _bubble.position
 			else:
 				_tap_water(get_global_mouse_position())
 		elif _place_down:
@@ -663,8 +667,10 @@ func _set_ids(on: bool) -> void:
 		l.set_show_id(on)
 
 
+## The pull counts from where the finger went down, not from the bubble's centre: a press beside
+## the bubble starts with no pull, so it can be pulled in any direction from there.
 func _update_drag() -> void:
-	_drag = (get_global_mouse_position() - _bubble.position).limit_length(MAX_DRAG)
+	_drag = (get_global_mouse_position() - _bubble.position - _grab_offset).limit_length(MAX_DRAG)
 
 
 ## A hidden treat: a double tap on open water makes a fish leap out right there.
