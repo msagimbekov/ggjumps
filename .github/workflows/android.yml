@@ -1,0 +1,166 @@
+name: Android build
+
+# Builds a signed release of the current main: an .aab for Google Play (upload it to the
+# internal testing track) and an .apk for installing straight on a phone. Download both from the
+# run's "Artifacts". Runs on Linux; manual only, from the Actions tab. Adapted from ggcuts.
+#
+# The version comes from project.godot (application/config/version), the build number
+# (Android's versionCode, which must grow for Play to accept an update) from this workflow's run
+# number.
+#
+# Godot is the same version as the iOS and OTA workflows: OTA patches only apply to builds made
+# with the same engine.
+#
+# Needs the repository secrets (made once; the files are in ~/ggjumps-signing, never in the repo):
+#   ANDROID_KEYSTORE_BASE64    base64 of android_release.keystore (PKCS12, alias "ggjumps")
+#   ANDROID_KEYSTORE_PASSWORD  the content of android_keystore_password.txt
+# Every update must be signed with the same key, or Play (and Android) refuse it.
+on:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.5-stable"
+  KEY_ALIAS: ggjumps
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Signing first so bad secrets fail fast, before the large Godot download.
+      - name: Install the signing keys
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "Missing secret ANDROID_KEYSTORE_BASE64"; exit 1; }
+          [ -n "$KEYSTORE_PASSWORD" ] || { echo "Missing secret ANDROID_KEYSTORE_PASSWORD"; exit 1; }
+          # Strip stray CR/LF/spaces that can sneak into secrets when pasted.
+          KEYSTORE_PASSWORD="$(printf %s "$KEYSTORE_PASSWORD" | tr -d "[:space:]")"
+          echo "::add-mask::$KEYSTORE_PASSWORD"
+          printf %s "$KEYSTORE_BASE64" | tr -d "[:space:]" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          keytool -list -keystore "$RUNNER_TEMP/release.keystore" -storetype PKCS12 \
+            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | grep -i "fingerprint"
+          # Godot also wants a debug keystore; a throwaway one will do.
+          keytool -genkeypair -keystore "$RUNNER_TEMP/debug.keystore" -storetype PKCS12 -storepass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          {
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/release.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$KEY_ALIAS"
+            echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/debug.keystore"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey"
+            echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android"
+          } >> "$GITHUB_ENV"
+
+      - name: Install Godot and export templates
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          unzip -q godot.zip
+          echo "GODOT=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/${GODOT_VERSION/-/.}"
+          echo "TEMPLATE_DIR=$TEMPLATE_DIR" >> "$GITHUB_ENV"
+          mkdir -p "$TEMPLATE_DIR"
+          unzip -q templates.tpz -d templates_tmp
+          mv templates_tmp/templates/* "$TEMPLATE_DIR/"
+          rm -rf godot.zip templates.tpz templates_tmp
+          # Where the Android SDK (preinstalled on the runner) and Java are.
+          SETTINGS="$HOME/.config/godot/editor_settings-${GODOT_VERSION%%-*}.tres"
+          mkdir -p "$HOME/.config/godot"
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "$ANDROID_HOME" "$JAVA_HOME" > "$SETTINGS"
+          cat "$SETTINGS"
+
+      - name: Set version and build number
+        run: |
+          APP_VERSION="$(tr -d '\r' < project.godot | sed -n 's/^config\/version="\(.*\)"$/\1/p')"
+          [ -n "$APP_VERSION" ] || { echo "No application/config/version in project.godot"; exit 1; }
+          sed -i "s/^version\/name=.*/version\/name=\"$APP_VERSION\"/" export_presets.cfg
+          sed -i "s/^version\/code=.*/version\/code=${{ github.run_number }}/" export_presets.cfg
+          grep -n "^version/" export_presets.cfg
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
+          echo "### Android $APP_VERSION (${{ github.run_number }})" >> "$GITHUB_STEP_SUMMARY"
+
+      # The Share plugin is a Gradle library, so the app is built with Gradle from the build
+      # template that ships with the export templates (never committed: android/build).
+      - name: Install the Android build template
+        run: |
+          mkdir -p android/build
+          unzip -q "$TEMPLATE_DIR/android_source.zip" -d android/build
+          printf %s "${GODOT_VERSION/-/.}" > android/.build_version
+          # Keep the editor from importing the template's files (it would leave .png.import files
+          # in res/, which Android's resource merger rejects).
+          touch android/build/.gdignore
+
+      # Google Play wants a recent target SDK (the preset targets 36): compile against 36 too,
+      # with an Android Gradle plugin that supports it. Fails loudly if a pattern no longer
+      # matches, so a template change can't silently skip it.
+      - name: Update the build template for compileSdk 36
+        run: |
+          CFG=android/build/config.gradle
+          WRAPPER=android/build/gradle/wrapper/gradle-wrapper.properties
+          grep -q "androidGradlePlugin" "$CFG" && grep -q "compileSdk" "$CFG" && grep -q "buildTools" "$CFG" || { echo "config.gradle layout changed"; cat "$CFG"; exit 1; }
+          sed -i -E "s/(androidGradlePlugin *: *)'[^']*'/\1'8.10.1'/" "$CFG"
+          sed -i -E "s/(compileSdk *: *)[0-9]+/\136/" "$CFG"
+          sed -i -E "s/(buildTools *: *)'[^']*'/\1'36.0.0'/" "$CFG"
+          sed -i -E "s#distributionUrl=.*#distributionUrl=https\\\\://services.gradle.org/distributions/gradle-8.11.1-bin.zip#" "$WRAPPER"
+          grep -nE "androidGradlePlugin|compileSdk|targetSdk|buildTools" "$CFG"
+          cat "$WRAPPER"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+
+      - name: Import project
+        run: |
+          "$GODOT" --headless --editor --quit || true
+          "$GODOT" --headless --editor --quit || true
+
+      - name: Export Android .apk
+        run: |
+          mkdir -p build/android
+          FILE="build/android/99jumps-${APP_VERSION}-${{ github.run_number }}.apk"
+          find android/build -name "*.import" -delete
+          "$GODOT" --headless --export-release "Android" "$FILE"
+          [ -s "$FILE" ] || { echo "Export failed"; exit 1; }
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "$FILE" | head -3
+          ls -la build/android
+
+      # Google Play takes an app bundle (.aab), not an APK. Same signing key.
+      - name: Export Android .aab
+        run: |
+          FILE="build/android/99jumps-${APP_VERSION}-${{ github.run_number }}.aab"
+          sed -i 's/^gradle_build\/export_format=.*/gradle_build\/export_format=1/' export_presets.cfg
+          find android/build -name "*.import" -delete
+          "$GODOT" --headless --export-release "Android" "$FILE"
+          [ -s "$FILE" ] || { echo "AAB export failed"; exit 1; }
+          jarsigner -verify "$FILE" | head -2
+          ls -la build/android
+
+      # Play rejects uploads whose native libraries aren't aligned to 16 KB pages (required for
+      # targetSdk 35+). Informational: prints each library's LOAD alignment (0x4000 or more is fine).
+      - name: Check 16 KB page alignment
+        run: |
+          mkdir -p aab_check && unzip -q -o build/android/*.aab 'base/lib/arm64-v8a/*.so' -d aab_check || true
+          for f in aab_check/base/lib/arm64-v8a/*.so; do
+            align="$(readelf -lW "$f" | awk '/LOAD/ {print $NF; exit}')"
+            echo "$(basename "$f") align=$align"
+            echo "$(basename "$f") align=$align" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 99jumps-android-${{ env.APP_VERSION }}-${{ github.run_number }}
+          path: |
+            build/android/*.apk
+            build/android/*.aab
+          retention-days: 30
+
+      - name: Clean up the keys
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore" "$RUNNER_TEMP/debug.keystore"
