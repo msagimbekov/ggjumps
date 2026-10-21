@@ -135,9 +135,10 @@ static func draw_box(ci: CanvasItem, pos: Vector2, s: float, k: Kind, fill: floa
 ## A small liquid drop in the player's colours: a wobbling, gently squashing blob, never a
 ## perfect circle. `fill` 0 is just a faint outline. `phase` keeps neighbours out of step.
 ## In the current bubble colour, or in skin `skin` (the settings previews).
-static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0, skin := -1) -> void:
-	var t := Time.get_ticks_msec() * 0.001 + phase
-	var wob := lerpf(0.5, 1.0, fill)  # empty slots stay calmer
+## `wobble` scales how far the outline moves, `speed` how fast (1 = the pickups' own lively look).
+static func draw_bubble(ci: CanvasItem, pos: Vector2, r: float, fill: float, alpha: float, phase := 0.0, skin := -1, wobble := 1.0, speed := 1.0) -> void:
+	var t := Time.get_ticks_msec() * 0.001 * speed + phase
+	var wob := lerpf(0.5, 1.0, fill) * wobble  # empty slots stay calmer
 	var squash := 0.07 * wob * sin(t * 2.3)
 	var pts := PackedVector2Array()
 	for n in 24:

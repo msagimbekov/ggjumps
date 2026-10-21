@@ -48,6 +48,20 @@ jobs:
           "$GODOT" --headless --export-release "iOS" build/ios/ggjumps.ipa
           ls build/ios
 
+      # Godot calls every iOS plugin's deinit hook (godot_ios_plugins_deinitialize, written into
+      # dummy.cpp) from Main::cleanup when the app quits, after the engine is torn down: the Share
+      # plugin's share_plugin_deinit then deletes its object and crashes (seen in ggcuts at every
+      # swipe-close). The process is ending anyway, so the hook is emptied.
+      - name: Skip the iOS plugins' deinit hooks at quit
+        run: |
+          FILES="$(grep -rl "void godot_ios_plugins_deinitialize() {" build/ios --include=*.cpp --include=*.mm || true)"
+          [ -n "$FILES" ] || { echo "godot_ios_plugins_deinitialize not found in the exported project"; exit 1; }
+          for F in $FILES; do
+            perl -0pi -e 's/(void godot_ios_plugins_deinitialize\(\) \{+)[^}]*/$1\n/g' "$F"
+            echo "== $F"; grep -A2 "void godot_ios_plugins_deinitialize() {" "$F"
+          done
+          ! grep -rq "^[[:space:]]*share_plugin_deinit();" build/ios || { echo "share_plugin_deinit is still called"; exit 1; }
+
       - name: Write App Store Connect API key
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

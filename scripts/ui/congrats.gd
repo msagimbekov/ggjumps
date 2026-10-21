@@ -1,18 +1,23 @@
 extends "res://scripts/ui/modal.gd"
 ## Shown after the fireworks on the last island: the run time, and an offer to join the
 ## leaderboard with a name (at most 10 characters). `saved(id)` once the entry is stored,
-## `skipped` when the player declines.
+## `skipped` when the player declines. Share (under the time) sends a picture of the finish
+## (share_card.gd) through the system share sheet.
 
 signal saved(id: String)
 signal skipped
 
 const LeaderboardApi := preload("res://scripts/leaderboard.gd")
+const ShareCard := preload("res://scripts/ui/share_card.gd")
+const Share := preload("res://scripts/share.gd")
+const SHARE_ICON := preload("res://ui/icons/share.svg")
 
 var _api: LeaderboardApi
 var _ms := 0
 var _name: LineEdit
 var _save: Button
 var _skip: Button
+var _share: Button
 var _status: Label
 
 
@@ -27,6 +32,28 @@ func _init(api: LeaderboardApi, ms: int) -> void:
 	time.text = LeaderboardApi.format_time(ms)
 	time.theme_type_variation = "BigLabel"
 	content.add_child(time)
+	# The share mark and the label centred together (a Button's own icon sits at its edge).
+	_share = Button.new()
+	_share.theme_type_variation = "GhostButton"
+	_share.custom_minimum_size.y = 52
+	_share.pressed.connect(_on_share)
+	content.add_child(_share)
+	var inside := HBoxContainer.new()
+	inside.alignment = BoxContainer.ALIGNMENT_CENTER
+	inside.add_theme_constant_override("separation", 10)
+	inside.mouse_filter = MOUSE_FILTER_IGNORE
+	inside.set_anchors_and_offsets_preset(PRESET_FULL_RECT)
+	_share.add_child(inside)
+	var mark := TextureRect.new()
+	mark.texture = SHARE_ICON
+	mark.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	mark.mouse_filter = MOUSE_FILTER_IGNORE
+	inside.add_child(mark)
+	var label := Label.new()
+	label.text = "Share my time"
+	label.add_theme_font_override("font", ui_theme().get_font("font", "Button"))
+	label.mouse_filter = MOUSE_FILTER_IGNORE
+	inside.add_child(label)
 	var ask := Label.new()
 	ask.text = "Add your name to the leaderboard?"
 	ask.theme_type_variation = "MutedLabel"
@@ -83,6 +110,19 @@ func _on_save() -> void:
 		return
 	saved.emit(id)
 	queue_free()
+
+
+## The share sheet with the finish's picture and message (with the name, when one is typed);
+## without one (desktop, or a build without the plugin) the message is copied instead.
+func _on_share() -> void:
+	_share.disabled = true
+	var image: Image = await ShareCard.make_image(self, _ms, LeaderboardApi.clean_name(_name.text))
+	if not is_inside_tree():
+		return
+	if not Share.share("99 jumps", ShareCard.text(_ms), image):
+		_status.visible = true
+		_status.text = "Message copied. The picture is saved in the game's data folder."
+	_share.disabled = false
 
 
 func _on_skip() -> void:

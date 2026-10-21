@@ -5,7 +5,7 @@ extends Control
 const FONT := preload("res://fonts/Fredoka.ttf")
 const Skins := preload("res://scripts/skins.gd")
 const TOOL_SIZE := 46.0
-const DROPS_SLOTS := 3
+const DROPS_SLOTS := 3  # drops per life: each fills the meter by a third
 const MAX_ICONS := 4  # more lives than this are shown as a number
 const INK := Color(0.02, 0.12, 0.22, 0.55)
 const GLASS := Color(0.02, 0.14, 0.26, 0.42)
@@ -22,7 +22,7 @@ var placing := false  # tools: place-the-bubble mode is on (shows a hint)
 
 var drops := 0
 var radar_left := 0.0
-var merge := 0.0  # 0..1: the three collected bubbles melting into one big one
+var merge := 0.0  # 0..1 while the full life meter holds before it empties
 var tools := false
 var radar := false
 var keep := false
@@ -30,6 +30,8 @@ var ids := false
 var place := false
 
 var _drop_pulse := 0.0
+var _fill := 0.0  # the life meter's shown level, eased towards drops / DROPS_SLOTS
+var _pop := 0.0  # 1..0: the full meter just turned into a life
 var _life_flash := 0.0
 var _bold: FontVariation
 var _medium: FontVariation
@@ -84,6 +86,10 @@ func place_rect() -> Rect2:
 	return _tool_rect(3)
 
 
+func intro_rect() -> Rect2:
+	return _tool_rect(4)
+
+
 ## Bottom-left: opens the leaderboard.
 func board_rect() -> Rect2:
 	return Rect2(18.0, size.y - 52.0 - 18.0 - bottom_inset, 52.0, 52.0)
@@ -107,6 +113,13 @@ func set_pickups(d: int, radar: float, merging: float) -> void:
 
 func _process(delta: float) -> void:
 	_drop_pulse = maxf(_drop_pulse - delta, 0.0)
+	_pop = maxf(_pop - delta * 2.0, 0.0)
+	if drops == 0:
+		if _fill > 0.98:
+			_pop = 1.0
+		_fill = 0.0
+	else:
+		_fill = move_toward(_fill, float(drops) / DROPS_SLOTS, delta * 2.5)
 	_life_flash = maxf(_life_flash - delta, 0.0)
 	queue_redraw()  # the collected drops wobble
 
@@ -167,26 +180,16 @@ func _draw() -> void:
 			nc = Vector2(lp.end.x - 28.0, lp.position.y + lp.size.y * 0.5)
 		draw_arc(nc, 13.0 + 22.0 * (1.0 - _life_flash), 0.0, TAU, 32, Color(1, 1, 1, _life_flash), 3.0)
 
-	# Collected bubbles: three slots that fill in, then melt into one big bubble; radar countdown next to them while it runs.
-	# Centred in the gap between the score and the lives pills (with the radar countdown, as a group).
-	var slots_w := 8.0 + DROPS_SLOTS * 36.0
-	var group_w := slots_w + (54.0 if radar_left > 0.0 else 0.0)
-	var gap_mid := (pill.end.x + lp.position.x) * 0.5
-	var slots := Rect2(gap_mid - group_w * 0.5, top + 4.0, slots_w, 44.0)
-	draw_style_box(_pill, slots)
-	var mid := Vector2(slots.get_center().x, slots.get_center().y)
-	for i in DROPS_SLOTS:
-		var at := Vector2(slots.position.x + 22.0 + i * 36.0, slots.get_center().y)
-		if merge > 0.0 and drops >= DROPS_SLOTS:
-			var e := 1.0 - pow(1.0 - merge, 2.0)
-			Pickup.draw_bubble(self, at.lerp(mid, e), lerpf(10.0, 18.0, e), 1.0, 1.0, i * 1.7)
-			continue
-		var pulse := 1.0
-		if i == drops - 1 and _drop_pulse > 0.0:
-			pulse = 1.0 + 0.3 * sin(PI * _drop_pulse / 0.5)
-		Pickup.draw_bubble(self, at, 10.0 * pulse, 1.0 if i < drops else 0.0, 1.0, i * 1.7)
+	# Life meter: one life-sized bubble in its own pill left of the lives; each collected drop
+	# fills it by a third, full it becomes a life and empties again.
+	var meter := meter_rect()
+	draw_style_box(_pill, meter)
+	_meter_bubble(meter.get_center())
+
+	# Radar countdown, centred in the gap between the score and the meter.
+	var gap_mid := (pill.end.x + meter.position.x) * 0.5
 	if radar_left > 0.0:
-		var rp := Rect2(slots.end.x + 10.0, slots.position.y, 44.0, 44.0)
+		var rp := Rect2(gap_mid - 22.0, top + 4.0, 44.0, 44.0)
 		draw_style_box(_pill, rp)
 		var rc := rp.get_center()
 		Pickup.draw_box(self, rc, 0.62, Pickup.Kind.RADAR, 1.0, 0.35 + 0.65 * Pickup.radar_alpha(radar_left), radar_left * 2.5)
@@ -197,6 +200,7 @@ func _draw() -> void:
 		_tool_button(keep_rect(), keep, 1)
 		_tool_button(ids_rect(), ids, 2)
 		_tool_button(place_rect(), place, 3)
+		_tool_button(intro_rect(), false, 4)
 
 	var br := board_rect()
 	var bsb := _pill.duplicate() as StyleBoxFlat
@@ -213,6 +217,40 @@ func _draw() -> void:
 		_text_c(_bold, card.position.y + 105.0, title, 64, Color.WHITE)
 		_text_c(_medium, card.position.y + 160.0, "%d / %d islands" % [best + 1, total], 28, Color(0.72, 0.92, 1.0))
 		_text_c(_medium, card.position.y + 225.0, subtitle, 24, Color(1, 1, 1, 0.7))
+
+
+## The life meter's pill, just left of the lives pill and the same height.
+func meter_rect() -> Rect2:
+	var lp := lives_rect()
+	return Rect2(lp.position.x - 10.0 - lp.size.y, lp.position.y, lp.size.y, lp.size.y)
+
+
+## The meter: an empty life ring that fills with the bubble's liquid from the bottom, the surface
+## gently waving; full it shows as a whole life, then bursts (a ring) when it empties.
+func _meter_bubble(c: Vector2) -> void:
+	var r := 13.0 * (1.0 + 0.25 * sin(PI * _drop_pulse / 0.5) if _drop_pulse > 0.0 else 1.0)
+	draw_circle(c, r, Color(1, 1, 1, 0.07))
+	if _fill > 0.0:
+		var t := Time.get_ticks_msec() * 0.001
+		var circle := PackedVector2Array()
+		for n in 32:
+			circle.append(c + Vector2.from_angle(TAU * n / 32.0) * r)
+		var level := c.y + r - 2.0 * r * _fill
+		var wave := 1.4 * (1.0 - _fill) * 4.0 * _fill  # flat when empty or full
+		var water := PackedVector2Array()
+		for n in 9:
+			var x := c.x - r - 1.0 + (2.0 * r + 2.0) * n / 8.0
+			water.append(Vector2(x, level + wave * sin(x * 0.45 + t * 4.0)))
+		water.append(Vector2(c.x + r + 1.0, c.y + r + 1.0))
+		water.append(Vector2(c.x - r - 1.0, c.y + r + 1.0))
+		for part in Geometry2D.intersect_polygons(circle, water):
+			draw_colored_polygon(part, Skins.color("body"))
+		if _fill > 0.98:
+			draw_circle(c + Vector2(-4, -4), 3.5, Color(1, 1, 1, 0.9))
+	var rim := Color(1, 1, 1, 0.3).lerp(Skins.color("rim"), _fill)
+	draw_arc(c, r, 0.0, TAU, 32, rim, 2.5 if _fill < 0.98 else 2.0, true)
+	if _pop > 0.0:
+		draw_arc(c, 13.0 + 20.0 * (1.0 - _pop), 0.0, TAU, 32, Color(1, 1, 1, _pop), 3.0)
 
 
 ## One life: the player's bubble in miniature, or a hollow ring for a lost one.
@@ -251,6 +289,8 @@ func _tool_button(r: Rect2, on: bool, icon: int) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-8, -4), c + Vector2(8, -4), c + Vector2(0, 14)]), col)
 			draw_circle(c + Vector2(0, -5), 9.0, col)
 			draw_circle(c + Vector2(0, -5), 3.5, Color(0.02, 0.14, 0.26))
+		4:  # replay the welcome screen: play triangle
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-7, -11), c + Vector2(11, 0), c + Vector2(-7, 11)]), col)
 
 
 ## Cup with handles on a little stand, in the same soft white as the settings gear.

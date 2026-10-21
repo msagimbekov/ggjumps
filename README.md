@@ -1,4 +1,4 @@
-# GG Jumps
+# 99 jumps
 
 Top-down mobile game (Android + iOS) made with **Godot 4.5.2** / GDScript. A small liquid bubble
 sits on a piece of land surrounded by water. Press the bubble and drag back (slingshot): the drag

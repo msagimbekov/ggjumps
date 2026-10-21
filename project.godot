@@ -10,15 +10,21 @@ config_version=5
 
 [application]
 
-config/name="GG Jumps"
-config/version="0.1.7"
+config/name="99 jumps"
+config/version="0.1.8"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://ui/icons/ios_1024.png"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.05, 0.28, 0.45, 1)
 
 [autoload]
 
 Ota="*res://scripts/ota.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/share/plugin.cfg")
 
 [display]
 

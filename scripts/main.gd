@@ -35,6 +35,7 @@ enum State { AIM, FLY, SLIDE, FALL, OVER, WON }
 const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const LeaderboardView := preload("res://scripts/ui/leaderboard_view.gd")
 const Congrats := preload("res://scripts/ui/congrats.gd")
+const Intro := preload("res://scripts/ui/intro.gd")
 const Fireworks := preload("res://scripts/fireworks.gd")
 const GameOver := preload("res://scripts/ui/game_over.gd")
 const MockAd := preload("res://scripts/ui/mock_ad.gd")
@@ -102,6 +103,9 @@ func _ready() -> void:
 	_build_level()
 	_place_pickups()
 	_restart()
+	# The welcome animation over the first moments (skipped with `-- --no-intro`, for previews).
+	if not "--no-intro" in OS.get_cmdline_user_args():
+		_show_intro()
 	# The game is up: a patched launch counts as good, then look for a newer patch (applies next launch).
 	# Looked up by path so the headless level check (no autoloads) still compiles this script.
 	var ota := get_node_or_null("/root/Ota")
@@ -491,6 +495,8 @@ func _input(event: InputEvent) -> void:
 				keep_lives = not keep_lives
 			elif show_tools and _hud.ids_rect().has_point(event.position):
 				_set_ids(not show_ids)
+			elif show_tools and _hud.intro_rect().has_point(event.position):
+				_show_intro()
 			elif _hud.lives_rect().has_point(event.position):
 				_tap_lives()
 			elif placing:
@@ -569,6 +575,13 @@ func _place_at(screen: Vector2) -> void:
 			_settle(l)
 			_cam.reset_smoothing()
 			return
+
+
+## The welcome animation; also replayed from the tools panel for testing.
+func _show_intro() -> void:
+	var intro := Intro.new()
+	intro.play_sound = _sound.play
+	_modals.add_child(intro)
 
 
 ## The last island: a fanfare and fireworks, then the congratulations window.
@@ -725,7 +738,8 @@ func _process(delta: float) -> void:
 	var sub := ""
 	_hud.set_tools(show_tools, debug_aim, keep_lives, show_ids, placing)
 	_hud.set_pickups(drops, radar_time, 1.0 - _drops_hold / 0.8 if _drops_hold > 0.0 else 0.0)
-	_hud.set_info(best, lives, title, sub)
+	# The life a full meter gives shows up in the lives once the meter empties (it already counts).
+	_hud.set_info(best, lives - (1 if _drops_hold > 0.0 else 0), title, sub)
 
 
 ## Treadmills and swaying islands carry the bubble; it falls once carried off the edge.

@@ -5,6 +5,9 @@ const Skins := preload("res://scripts/skins.gd")
 const FONT := preload("res://fonts/Fredoka.ttf")
 const MINT := Color(0.55, 0.93, 0.72)
 const R := 26.0
+## Calmer than the pickups: nearly round, slowly breathing.
+const WOBBLE := 0.3
+const SPEED := 0.45
 
 var on_change: Callable  # called after a new colour is picked
 var _font: FontVariation
@@ -47,6 +50,6 @@ func _draw() -> void:
 		if chosen:
 			draw_circle(c, R + 12.0, Color(MINT.r, MINT.g, MINT.b, 0.16))
 			draw_arc(c, R + 12.0, 0.0, TAU, 48, MINT, 3.0, true)
-		Pickup.draw_bubble(self, c, R, 1.0, 1.0, i * 1.7, i)
+		Pickup.draw_bubble(self, c, R, 1.0, 1.0, i * 1.7, i, WOBBLE, SPEED)
 		var name: String = Skins.SKINS[i]["name"]
 		draw_string(_font, Vector2(c.x - 60.0, 104.0), name, HORIZONTAL_ALIGNMENT_CENTER, 120.0, 20, Color.WHITE if chosen else Color(1, 1, 1, 0.55))
