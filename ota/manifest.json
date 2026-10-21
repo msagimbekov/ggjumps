@@ -59,6 +59,26 @@
    "sha256": "599fdf8f5c5c1338bea2fe473a38ffd05b9922fcf1c7077c8d66ccbfa461817a",
    "signature": "HIPr+IyPukeZ3Pst1wisUDY+FSTS82nLnXbomETMwYs7SK/cHzk7f60+Pra3P3Ke0fklI7swQFkXSZzksXwI5t5GlGC5qrlqy2Le1pMZljx4IGU6evVvcqO92W96abCEg3qT4lnnXZvk12F2RBB7kWd+0WCsToHA9IXPpNBYwKd+pivOJpQ+ULm2OdFmcbi0KbzH4YP63wrq1iREvH/bfJKXULYLfy9NDAf3SG30xx94DywJNZbs6NzofnjneYDf+gAxz6BgvgAsXd/X4jF2QkPsoPk4VrQcWXVwylEWzJa/7j1Kr8WRZBGrNDrmPljsBht6JnafelWrq9hd+NxiKQ==",
    "commit": "d4c61fb"
+  },
+  {
+   "platform": "iOS",
+   "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
+   "app": "0.2.3",
+   "version": 13,
+   "file": "ios-0.2.3-13.pck",
+   "sha256": "66ab4ecd83b73df1d661545fdab9b590af7a5dbc47de721f6c82c83a45a0fad7",
+   "signature": "iluBKZQ/tc9jibPR7j6EUkCbRBHLMmNKb7F/UkRYot+TsYYcOejvdcEI8PtMW+llYQdBa6fhlcg9LsdyTHVON7bMSEcOf91XKp9/pmJ+qJy0K+73CKGCuBKo/6Qngbyz9V2ho0Txxfttgm6SYIcdBuNU82wpsER/ZQ04goNv5Yt5GchSa9htBikIwERMX+ZCBLm3kpeYg9nNYH6YXq/Le2zlB/DXvggw8F5/1xJXLD856bZZ0YtcWlMAkwjJ9keVgZ2JNyf0scWMa4Yix3OxQUFAJxPRVrG1aQDPmkCoSkAk7mo/nN7AmVcOAz6JEBf2bOyiC+hKt/06SkoJ6dMXUA==",
+   "commit": "dd92203"
+  },
+  {
+   "platform": "Android",
+   "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
+   "app": "0.2.3",
+   "version": 13,
+   "file": "android-0.2.3-13.pck",
+   "sha256": "3cde8ab9eb9860cdb2297ec599ff912c426a024869ee3c60e02fe71903366f06",
+   "signature": "nL9IGJvqKIKh3LRVVznqGSgfsWYm/XwaDHZnwDXKvLqSrCEgJEAjXWEWRs919ZYW6cPxUP0lVj2HQLJdEQCfqcq17+9zSqwPF21SHkdG32FUfOwSOjELFVOEDhiaJgE+mXR2NA5p9o/dvlu4Hqm4fbay+AfqYYmnCaRq/nPLguaKl/PNpcU7f5NG45ad7aFr9f+e1Vhv5Xlf1wym2s3Ba3DS7oOf7/ET6sJP1UCpU6RLhuQFVX6QuJqyjyl4NBCZLmFJtJzShgjXlPUCtg1Lo4OKJtBxn08qZVw9PD5gd04yHPyqvBADe0dS3Fj3F6Dn/FISDjMDka1vGmmrVrLn8g==",
+   "commit": "dd92203"
   }
  ]
 }
