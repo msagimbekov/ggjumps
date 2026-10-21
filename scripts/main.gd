@@ -9,6 +9,7 @@ const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump
 const GRAB_RADIUS := 90.0
+const DOUBLE_TAP := 0.35  # seconds between the taps of a double tap on the water (a fish leaps there)
 const SLIDE_SPEED := 560.0
 const ICE_DECEL := 650.0
 const ICE_SCALE := 1.05
@@ -82,6 +83,8 @@ var _critters: Critters
 var _movers: Array[Land] = []
 var _aim_taps := 0
 var _aim_tap_time := 0.0
+var _water_tap_time := -1.0
+var _water_tap_at := Vector2.ZERO
 var _water: ColorRect
 var _water_mat: ShaderMaterial
 
@@ -509,6 +512,8 @@ func _input(event: InputEvent) -> void:
 			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
 				_dragging = true
 				_drag = Vector2.ZERO
+			else:
+				_tap_water(get_global_mouse_position())
 		elif _place_down:
 			_place_down = false
 			if not _place_moved:
@@ -615,6 +620,18 @@ func _set_ids(on: bool) -> void:
 
 func _update_drag() -> void:
 	_drag = (get_global_mouse_position() - _bubble.position).limit_length(MAX_DRAG)
+
+
+## A hidden treat: a double tap on open water makes a fish leap out right there.
+func _tap_water(world: Vector2) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _water_tap_time <= DOUBLE_TAP and world.distance_to(_water_tap_at) < 40.0:
+		_water_tap_time = -1.0
+		if _water_at(world, 12.0):
+			_critters.leap_at(world)
+		return
+	_water_tap_time = now
+	_water_tap_at = world
 
 
 ## Five quick taps on the lives icons show the tools buttons; three hide them and reset the tools.

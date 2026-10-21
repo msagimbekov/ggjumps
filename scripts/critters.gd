@@ -64,6 +64,20 @@ func _try_leap() -> void:
 			return
 
 
+## A leap from `p` (a double tap on the water): it dives back in a little way off, over open
+## water when there is a way to.
+func leap_at(p: Vector2) -> void:
+	var d := Vector2.from_angle(randf() * TAU) * 70.0
+	if water_at.is_valid():
+		for k in 10:
+			var off := Vector2.from_angle(randf() * TAU) * randf_range(60.0, 95.0)
+			if water_at.call(p + off, 30.0) and water_at.call(p + off * 0.5, 30.0):
+				d = off
+				break
+	_leaps.append({"p0": p, "p1": p + d, "t": 0.0, "dur": 0.9, "h": randf_range(40.0, 60.0)})
+	fx.splash(p, 0.45)
+
+
 func _draw() -> void:
 	for f in _swim:
 		_fish(f.p, f.a, f.len, f.ph, Color(0.02, 0.18, 0.30, 0.38), Color(0.02, 0.18, 0.30, 0.30))
