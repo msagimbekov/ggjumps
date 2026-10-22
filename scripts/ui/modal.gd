@@ -19,6 +19,7 @@ var card: PanelContainer
 var _title: Label
 var _center: CenterContainer
 var _closable := true
+var _opened_frame := -1  # the press that opened the window reaches it too: not a tap outside
 
 
 func _init(title_text: String, width := 460.0, closable := true) -> void:
@@ -69,8 +70,13 @@ func _process(_delta: float) -> void:
 
 
 ## A closable window also closes on a tap anywhere outside the card.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_ENTER_TREE:  # not _ready: windows override that
+		_opened_frame = Engine.get_process_frames()
+
+
 func _gui_input(event: InputEvent) -> void:
-	if _closable and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+	if _closable and Engine.get_process_frames() > _opened_frame and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
 			and not card.get_global_rect().has_point(event.global_position):
 		accept_event()
 		close()
