@@ -8,8 +8,8 @@ const START_LIVES := 3
 const MAX_RANGE := 418.0  # jump distance at full drag
 const MAX_DRAG := 160.0
 const MIN_DRAG := 24.0  # shorter drags cancel the jump
-## A press this close to the bubble grabs it (5 bubble radii), so it can be pulled even when it
-## sits at the edge of the screen.
+## A press anywhere in the play area (between the top and bottom HUD rows) grabs the bubble;
+## a press this close to it counts as a press on the bubble, not a tap on the water.
 const GRAB_RADIUS := Bubble.R * 5.0
 const NO_AD_FROM := 90  # from this island on, running out of lives means starting over (no ad)
 const DOUBLE_TAP := 0.35  # seconds between the taps of a double tap on the water (a fish leaps there)
@@ -527,7 +527,7 @@ func _input(event: InputEvent) -> void:
 				_place_cam = _place_target
 				_place_vel = 0.0
 				_place_last_t = Time.get_ticks_msec() / 1000.0
-			elif state == State.AIM and get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS:
+			elif state == State.AIM and (_hud.play_rect().has_point(event.position) or get_global_mouse_position().distance_to(_bubble.position) <= GRAB_RADIUS):
 				_dragging = true
 				_drag = Vector2.ZERO
 				_grab_offset = get_global_mouse_position() - _bubble.position
@@ -547,6 +547,8 @@ func _input(event: InputEvent) -> void:
 			_bubble.pull = Vector2.ZERO
 			if state == State.AIM and v.length() >= MIN_DRAG:
 				_jump(v)
+			elif _grab_offset.length() > GRAB_RADIUS:
+				_tap_water(_bubble.position + _grab_offset)  # a tap away from the bubble still reaches the water
 	elif event is InputEventMouseMotion and _place_down:
 		var dy: float = event.position.y - _place_from.y
 		if absf(dy) > 12.0:

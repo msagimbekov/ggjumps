@@ -112,6 +112,13 @@ func cap_rect() -> Rect2:
 	return _tool_rect(6)
 
 
+## Between the top row (score, lives) and the bottom row (leaderboard, settings): a press here
+## grabs the bubble.
+func play_rect() -> Rect2:
+	var top := top_inset + 18.0 + 52.0 + 12.0
+	return Rect2(0.0, top, size.x, size.y - 18.0 - 52.0 - 12.0 - bottom_inset - top)
+
+
 ## Bottom-left: opens the leaderboard.
 func board_rect() -> Rect2:
 	return Rect2(18.0, size.y - 52.0 - 18.0 - bottom_inset, 52.0, 52.0)
