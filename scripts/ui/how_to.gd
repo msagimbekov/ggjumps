@@ -10,7 +10,7 @@ const ART := Vector2(408, 176)
 const SEA := Color(0.06, 0.36, 0.56)
 const CARDS := [
 	["Pull back to jump",
-		"Drag back from the bubble and let go. The further you pull, the further it flies."],
+		"Put your finger down anywhere on the water, pull back away from where you want to go and let go. The further you pull, the further the bubble flies."],
 	["Stay out of the water",
 		"Miss an island and the bubble splashes into the sea: that costs a life. You start with 3, shown top right. Out of lives? Watch a short ad and carry on, up to island 90. The last ten are all yours."],
 	["Three kinds of island",
