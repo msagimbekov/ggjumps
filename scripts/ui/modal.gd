@@ -18,12 +18,14 @@ var content: VBoxContainer
 var card: PanelContainer
 var _title: Label
 var _center: CenterContainer
+var _closable := true
 
 
 func _init(title_text: String, width := 460.0, closable := true) -> void:
 	set_anchors_preset(PRESET_FULL_RECT)
 	theme = ui_theme()
 	mouse_filter = MOUSE_FILTER_STOP
+	_closable = closable
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0.04, 0.09, 0.6)
 	dim.set_anchors_preset(PRESET_FULL_RECT)
@@ -64,6 +66,14 @@ func _process(_delta: float) -> void:
 	var win_h := float(DisplayServer.window_get_size().y)
 	var lift := kb * get_viewport_rect().size.y / win_h if kb > 0.0 and win_h > 0.0 else 0.0
 	_center.offset_bottom = -lift
+
+
+## A closable window also closes on a tap anywhere outside the card.
+func _gui_input(event: InputEvent) -> void:
+	if _closable and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+			and not card.get_global_rect().has_point(event.global_position):
+		accept_event()
+		close()
 
 
 func set_title(text: String) -> void:
