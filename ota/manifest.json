@@ -63,22 +63,22 @@
   {
    "platform": "iOS",
    "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
-   "app": "0.2.4",
-   "version": 14,
-   "file": "ios-0.2.4-14.pck",
-   "sha256": "1263d0c3200b01d14f2b6460c54bbb0062e6f73485ae85f2381177831d87f474",
-   "signature": "SaQ8fU7yL2rGHneHnMAFEyFSdaBGpYBMB+OGzRt8patRqks1qfHYo1hVDaqofazr+ms5V5bO3bZF3h5c9ndVPPEYRYcTfNyKCzKHIHUAMW2KEm34gkGrn3QawwE/op1YJOHFijO1b7YcaxtolzZiukrFDW+Kn45IFLXCSY3b+0/TVOa+zlERWrfzIFnjKKyAdSILxvJpzdC7R993rdK79HfLsPp3jpAw/Hxf3TPFCHjGMI8SIic27cA0r14jYFswxeLj/Tnd6SZ8w23zZAlEW8dVGqrcIrKg5Ndvow59j9NBwut+GR3xtaaJZy17DRbK78Z6QOlLFWaXoAX17fvN7g==",
-   "commit": "2588d7a"
+   "app": "0.2.5",
+   "version": 15,
+   "file": "ios-0.2.5-15.pck",
+   "sha256": "9b8d00dd87b577eab3ff427052e67a98683315f68486c088fa74514e5c3b805b",
+   "signature": "IWuDtowBvxU0ZkpnDBO26dcDHFEErtICFyYf/itIF4BS0/7GLceO2rMax9SSm6C0OAvLY/SUVEYTNFD4Iq/+M1A5dPftumVXSYNxSJuvHhwEmdJTHM4frQmaZE2mFYQ6ig4sEAitgXrYiNQ9t1VLbO/fImJAc0pRBcpAtVbGQx64BgDw0HKrrYOeCilR2AN+/DHY260MS5ZzM0hU95LxlKiKRT9k1ALer7qC2cwhBdn31RcZUr0qQIXnfvplSwVviCFCGrcmR7F/QNu9TOXzb3P2OX+x9x3GCLYJCNdNYueCPM0nbk3PYEErImwh5oUNQSk7zCVIcPxto2ovDizWgw==",
+   "commit": "973b119"
   },
   {
    "platform": "Android",
    "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
-   "app": "0.2.4",
-   "version": 14,
-   "file": "android-0.2.4-14.pck",
-   "sha256": "3b3175a47932a1d33851b765ba49d308028b51b367a3b7d059283204724f74f6",
-   "signature": "o5uY+HZwq7fHFPYUZ6+URyrQJjfbg2w95c73x1IdxZuKLYrAvOiOi7gC8qGLW3E79FjD7yc9JEbveIFu1qeiHCm39q+5s+qjRWh0yxHhZAkN8P7hqmG9mJu9y4HsaCRfJpTvjEsBET/nuUgHoztF29T9KqG8O2grvO1u4/w8wK4J3w9QIRTIi5rYyoxmIGahawQay0v9AeG4+EnQX+SjiPst7nxzDNHp3KDPLn48f8VpxZ9bLazw4hTRljqdN9zQzLF4Ffsb1EpzkxrYLgzFqKeA9jGhJSOAxvds1i47T2CovpXhqFXacrWJnY4ZTRO5QPQf+lYkGKIL8pqwxu/zvQ==",
-   "commit": "2588d7a"
+   "app": "0.2.5",
+   "version": 15,
+   "file": "android-0.2.5-15.pck",
+   "sha256": "562930378cf8936427a8de8e7e6793e69b76ca8f3a61bf8239c9d878584d0dea",
+   "signature": "mYFwV194a/FyrMBDj4k/2sZO2VZEVlUWONyFrWWZbLi4AZMMycmP6Uc7nMc5ekbD4akMZnNKBWfzffSFJzEF3gR/eVUvvVTCjz+Ud84tXH+Ie0CeFc2URsA3xkAMpcaa4uvZ3Mo01rpaCdVwsaqWAtfGZHWJ1aMSEKaEuSqBe1H832HdhVArfsEDWW3heQi+eD0x2akWFYuaejKGeOtzB6ZVC4oDTSXgxxnwUvIlO9Gm/VTZfqn1A/yALaGXGqcjYo1pGUHz3nnIA8ELs+toiFj1Q0OuIWMaGIShZhAm8Igvic+9xbGYtYvdqeVlokoE+Hx8HhALhdr6l15Ri2Wo9A==",
+   "commit": "973b119"
   }
  ]
 }
