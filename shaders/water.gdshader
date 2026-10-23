@@ -3,38 +3,41 @@ shader_type canvas_item;
 // World-space sea: origin is the world position of the screen's top-left corner,
 // area the visible size, so the water stays put in the world while the camera moves.
 // Layers: slow depth tint, swell with lit normals, sun glints, caustic web, thin whitecaps.
-uniform vec2 origin = vec2(0.0);
-uniform vec2 area = vec2(540.0, 960.0);
-uniform float t = 0.0;
+// Everything that touches world coordinates is highp: Android GPUs default fragment floats to
+// mediump (about 3 significant digits, max 65504), which broke the hash into big flat squares.
+uniform highp vec2 origin = vec2(0.0);
+uniform highp vec2 area = vec2(540.0, 960.0);
+uniform highp float t = 0.0;
 
-float hash(vec2 p) {
+float hash(highp vec2 p) {
+	p = mod(p, 289.0);  // noise repeats every 289 cells, keeps the products small
 	p = fract(p * vec2(123.34, 456.21));
 	p += dot(p, p + 45.32);
 	return fract(p.x * p.y);
 }
 
-float noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
+float noise(highp vec2 p) {
+	highp vec2 i = floor(p);
+	highp vec2 f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
 		mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-float swell(vec2 p) {
-	float warp = noise(p * 0.012 + t * 0.05) * 3.0;
+highp float swell(highp vec2 p) {
+	highp float warp = noise(p * 0.012 + t * 0.05) * 3.0;
 	return 0.5 * sin(dot(p, vec2(0.020, 0.012)) + t * 0.9 + warp)
 		+ 0.3 * sin(dot(p, vec2(-0.011, 0.024)) - t * 0.7 + warp * 1.3)
 		+ 0.2 * sin(dot(p, vec2(0.035, -0.020)) + t * 1.3 - warp);
 }
 
 void fragment() {
-	vec2 p = UV * area + origin;
+	highp vec2 p = UV * area + origin;
 
-	float e = 1.5;
-	float h0 = swell(p);
-	float hx = swell(p + vec2(e, 0.0));
-	float hy = swell(p + vec2(0.0, e));
+	highp float e = 1.5;
+	highp float h0 = swell(p);
+	highp float hx = swell(p + vec2(e, 0.0));
+	highp float hy = swell(p + vec2(0.0, e));
 	vec3 n = normalize(vec3(-(hx - h0) / e * 16.0, -(hy - h0) / e * 16.0, 1.0));
 	vec3 light = normalize(vec3(-0.45, -0.55, 0.7));
 	float diff = dot(n, light);
