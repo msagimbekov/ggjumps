@@ -4,31 +4,38 @@ extends Node
 ## Uses the Supabase table `ggjumps_leaderboard` (in the ggcuts project; schema and access
 ## rules in supabase/leaderboard.sql) through Supabase's REST API with the project's
 ## publishable key. That key is meant to ship in apps: row-level security lets it only read the
-## list and add entries, never change or delete them. Never put a secret key, the service-role
+## list, add entries and report them, never change or delete them. Never put a secret key, the service-role
 ## key or the database password in the app.
 
 const SUPABASE_URL := "https://mrwwnbyctgiauejgshrm.supabase.co"
 const SUPABASE_KEY := "sb_publishable_8jNg7go88CAeeQl9UNeQBg_FCNWZHFg"
 const TABLE := "ggjumps_leaderboard"
+## Reports of offensive names (supabase/leaderboard.sql hides an entry after REPORTS_TO_HIDE of them).
+const REPORTS_TABLE := "ggjumps_leaderboard_reports"
 const TIMEOUT := 10.0
 const LIST_LIMIT := 200
 ## Ids of the entries this device submitted, to highlight "you" in the list.
 const MINE_PATH := "user://leaderboard_mine.json"
+## Ids of the entries this player reported: never shown on this device again.
+const HIDDEN_PATH := "user://leaderboard_hidden.json"
 ## Same as the database check (supabase/leaderboard.sql).
 const NAME_MAX := 10
+
+const NameFilter := preload("res://scripts/name_filter.gd")
 
 
 ## Entries fastest first (on a tie, who finished first): [{"id", "name", "ms", "finished"
 ## (unix time), "mine"}], or null if the list couldn't be loaded.
 func fetch() -> Variant:
-	var response = await _request(HTTPClient.METHOD_GET,
+	var response = await _request(HTTPClient.METHOD_GET, TABLE,
 		"?select=id,name,time_ms,finished_at&order=time_ms.asc,finished_at.asc&limit=%d" % LIST_LIMIT, "")
 	if not response is Array:
 		return null
-	var mine := _mine()
+	var mine := _ids(MINE_PATH)
+	var hidden := _ids(HIDDEN_PATH)
 	var out := []
 	for entry in response:
-		if entry is Dictionary and entry.has("name") and entry.has("time_ms"):
+		if entry is Dictionary and entry.has("name") and entry.has("time_ms") and not str(entry.get("id", "")) in hidden:
 			out.append({
 				"id": str(entry.get("id", "")),
 				"name": str(entry["name"]),
@@ -42,16 +49,25 @@ func fetch() -> Variant:
 ## Adds a finished run. Returns the new entry's id, or "" if it couldn't be saved.
 func submit(player_name: String, ms: int) -> String:
 	var body := JSON.stringify({"name": clean_name(player_name), "time_ms": ms})
-	var response = await _request(HTTPClient.METHOD_POST, "", body)
+	var response = await _request(HTTPClient.METHOD_POST, TABLE, "", body)
 	if not (response is Array and response.size() == 1 and response[0] is Dictionary):
 		return ""
 	var id := str(response[0].get("id", ""))
-	var mine := _mine()
-	mine.append(id)
-	var file := FileAccess.open(MINE_PATH, FileAccess.WRITE)
-	if file:
-		file.store_string(JSON.stringify(mine))
+	_add_id(MINE_PATH, id)
 	return id
+
+
+## Reports an entry's name as offensive and hides it on this device right away (also when the
+## report can't be sent). Returns whether the report reached the server.
+func report(id: String) -> bool:
+	_add_id(HIDDEN_PATH, id)
+	var body := JSON.stringify({"entry_id": id})
+	return await _request(HTTPClient.METHOD_POST, REPORTS_TABLE, "", body, "return=minimal") != null
+
+
+## Whether a name may go on the leaderboard (offensive names may not).
+static func name_allowed(player_name: String) -> bool:
+	return not NameFilter.blocked(clean_name(player_name))
 
 
 ## A name as stored: trimmed, inner whitespace collapsed, at most NAME_MAX characters.
@@ -83,22 +99,33 @@ static func _unix(value: Variant) -> int:
 	return 0
 
 
-func _mine() -> Array:
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(MINE_PATH)) if FileAccess.file_exists(MINE_PATH) else null
+func _ids(path: String) -> Array:
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
 	return parsed if parsed is Array else []
 
 
-## One REST call to the table; returns the parsed JSON body, or null on any failure.
-func _request(method: HTTPClient.Method, query: String, body: String) -> Variant:
+func _add_id(path: String, id: String) -> void:
+	var ids := _ids(path)
+	if id in ids:
+		return
+	ids.append(id)
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(ids))
+
+
+## One REST call to a table; returns the parsed JSON body ({} when it is empty), or null on any failure.
+func _request(method: HTTPClient.Method, table: String, query: String, body: String,
+		prefer := "return=representation") -> Variant:
 	var http := HTTPRequest.new()
 	http.timeout = TIMEOUT
 	add_child(http)
 	var headers := PackedStringArray([
 		"apikey: " + SUPABASE_KEY,
 		"Content-Type: application/json",
-		"Prefer: return=representation",
+		"Prefer: " + prefer,
 	])
-	var url := "%s/rest/v1/%s%s" % [SUPABASE_URL, TABLE, query]
+	var url := "%s/rest/v1/%s%s" % [SUPABASE_URL, table, query]
 	if http.request(url, headers, method, body) != OK:
 		http.queue_free()
 		return null
@@ -108,4 +135,5 @@ func _request(method: HTTPClient.Method, query: String, body: String) -> Variant
 	if result[0] != HTTPRequest.RESULT_SUCCESS or code < 200 or code >= 300:
 		push_warning("Leaderboard: request failed (result %d, HTTP %d)" % [result[0], code])
 		return null
-	return JSON.parse_string((result[3] as PackedByteArray).get_string_from_utf8())
+	var text := (result[3] as PackedByteArray).get_string_from_utf8()
+	return JSON.parse_string(text) if text.strip_edges() != "" else {}

@@ -688,6 +688,7 @@ func _tap_water(world: Vector2) -> void:
 
 
 ## Five quick taps on the lives icons show the tools buttons; three hide them and reset the tools.
+## Debug builds only (the editor, local runs): store builds are exported as release and never show them.
 func _tap_lives() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	_aim_taps = _aim_taps + 1 if now - _aim_tap_time < 2.0 else 1
@@ -703,7 +704,7 @@ func _tap_lives() -> void:
 		_cycle_fps()  # back to off, with the sea shown
 		_set_cap60(false)
 		_set_ids(false)
-	elif not show_tools and _aim_taps >= AIM_TAPS:
+	elif not show_tools and _aim_taps >= AIM_TAPS and OS.is_debug_build():
 		_aim_taps = 0
 		show_tools = true
 

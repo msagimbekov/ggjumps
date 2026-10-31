@@ -11,6 +11,7 @@ const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const ShareCard := preload("res://scripts/ui/share_card.gd")
 const Share := preload("res://scripts/share.gd")
 const SHARE_ICON := preload("res://ui/icons/share.svg")
+const NAME_REFUSED := "Please pick a different name."
 
 var _api: LeaderboardApi
 var _ms := 0
@@ -87,7 +88,14 @@ func _init(api: LeaderboardApi, ms: int) -> void:
 
 
 func _refresh() -> void:
-	_save.disabled = LeaderboardApi.clean_name(_name.text) == ""
+	var player := LeaderboardApi.clean_name(_name.text)
+	var allowed := LeaderboardApi.name_allowed(player)
+	_save.disabled = player == "" or not allowed
+	if not allowed:
+		_status.text = NAME_REFUSED
+		_status.visible = true
+	elif _status.text == NAME_REFUSED:
+		_status.visible = false
 
 
 func _on_save() -> void:
