@@ -2,16 +2,23 @@ class_name SettingsPanel
 extends Control
 ## Gear button in the bottom-right corner; it opens the Settings window: music and effects
 ## volume (each with an icon that mutes it and brings the old volume back), then the bubble colour,
-## a way back to the "How to play" cards, a link to the privacy policy (with Privacy options where the
-## ads' consent form must be reachable).
+## a way back to the "How to play" cards, "Rate" (the game's store page) and "Share" (the store links
+## through the share sheet), "Send feedback" (an email), a link to the privacy policy (with Privacy
+## options where the ads' consent form must be reachable).
 ## Taps come from main.gd through handle(), before the game sees them.
 
 const Modal := preload("res://scripts/ui/modal.gd")
 const SoundRow := preload("res://scripts/ui/sound_row.gd")
 const SkinRow := preload("res://scripts/ui/skin_row.gd")
 const ExternalLink := preload("res://scripts/ui/external_link.gd")
+const Share := preload("res://scripts/share.gd")
+const ShareCard := preload("res://scripts/ui/share_card.gd")
 const BUTTON := 52.0
 const PRIVACY_URL := "https://msagimbekov.github.io/ggjumps/privacy.html"
+## Rating: the store app on the phone (the App Store opens straight on "Write a Review").
+const RATE_ANDROID := "market://details?id=com.ggcuts.jumps"
+const RATE_IOS := "https://apps.apple.com/app/id6824316189?action=write-review"
+const FEEDBACK_URL := "mailto:madi.sagimbekov@gmail.com?subject=99%20jumps%20feedback"
 
 var sound: Sound
 var modal_parent: Node  # layer the window opens in
@@ -72,6 +79,24 @@ func open() -> void:
 		if on_how_to.is_valid():
 			on_how_to.call())
 	m.content.add_child(how)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var rate := Button.new()
+	rate.text = "Rate"
+	rate.theme_type_variation = "GhostButton"
+	rate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rate.pressed.connect(open_store_page)
+	row.add_child(rate)
+	var share := Button.new()
+	share.text = "Share"
+	share.theme_type_variation = "GhostButton"
+	share.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	share.pressed.connect(func():
+		if not Share.share("99 jumps", share_text()):
+			share.text = "Link copied")
+	row.add_child(share)
+	m.content.add_child(row)
+	m.content.add_child(ExternalLink.new("Send feedback", FEEDBACK_URL))
 	m.content.add_child(ExternalLink.new("Privacy policy", PRIVACY_URL))
 	if ads and ads.privacy_options_required():
 		var privacy := Button.new()
@@ -84,6 +109,29 @@ func open() -> void:
 	m.closed.connect(_on_closed)
 	modal_parent.add_child(m)
 	queue_redraw()
+
+
+## Opens the game's page in the phone's store app, so the player can rate it.
+static func open_store_page() -> void:
+	match OS.get_name():
+		"iOS":
+			OS.shell_open(RATE_IOS)
+		"Android":
+			if OS.shell_open(RATE_ANDROID) != OK:
+				OS.shell_open(ShareCard.GOOGLE_PLAY)
+		_:
+			OS.shell_open(ShareCard.GOOGLE_PLAY)
+
+
+## The message for "Share": what the game is, and where to get it.
+static func share_text() -> String:
+	var lines := PackedStringArray([
+		"99 jumps: drag, aim and jump a liquid bubble across 100 islands. Don't fall in! 🫧"])
+	if ShareCard.APP_STORE != "":
+		lines.append("App Store: " + ShareCard.APP_STORE)
+	if ShareCard.GOOGLE_PLAY != "":
+		lines.append("Google Play: " + ShareCard.GOOGLE_PLAY)
+	return "\n".join(lines)
 
 
 func _on_closed() -> void:

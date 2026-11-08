@@ -13,9 +13,8 @@ const LeaderboardApi := preload("res://scripts/leaderboard.gd")
 const SIZE := Vector2i(1080, 1920)
 const LAYOUT := Vector2(540, 960)
 const ISLANDS := 100
-## Where to get the game, at the end of the shared message. APP_STORE stays empty until the
-## App Store listing has its id (https://apps.apple.com/app/id<number>); empty links are left out.
-const APP_STORE := ""
+## Where to get the game, at the end of the shared message; empty links are left out.
+const APP_STORE := "https://apps.apple.com/app/id6824316189"
 const GOOGLE_PLAY := "https://play.google.com/store/apps/details?id=com.ggcuts.jumps"
 ## The stores' own badges (Apple's SVG, Google's PNG cropped to its border), drawn at the same
 ## height. Badge artwork must not be altered: only scaled.
