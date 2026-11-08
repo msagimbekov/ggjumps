@@ -61,16 +61,6 @@
    "commit": "d4c61fb"
   },
   {
-   "platform": "iOS",
-   "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
-   "app": "0.2.9",
-   "version": 19,
-   "file": "ios-0.2.9-19.pck",
-   "sha256": "5b2c8f190d63f964f74b4875792c44e6c263bd49d16a20f3a7e0e0492b8ae0b0",
-   "signature": "g2FPb5oIjQNc98mh0n8AIvDYNk24V9mLdFkTZFiR0KrAtCibEMt9hX+bzSby5WQd7AxEtg1mzfJMwIPDqhgUaAttm5OCrBap2Cf54sanZ2VaHY17cX1Tm1YQ3gkK7cTXIFGXkak64tZdVOz7HII5WmO4Mm8e6cK3GmRpDF/C02WLjUwAVy7ay1x/qnU7FhGY6W3KRBAulhOKaWFDG9fDJ8esPjSQhpVn5/+E9/6Bq+5CosQnQy5huGp1+sqfyVj70L5YOso/mGvEUKvAW0HFGS/KpYwHjghKSsHAkB3Hytnm0reqXDt0ZpqoiqYOTTgjoG1CPC1nhKe0zYzyEgVZdQ==",
-   "commit": "5c8abbf"
-  },
-  {
    "platform": "Android",
    "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
    "app": "0.2.9",
@@ -79,6 +69,16 @@
    "sha256": "fc660d021de0ee2ec901e2abe179ea90bd5523fee5e7859da09ab00407a0ee74",
    "signature": "XrmSgLHWP9JAteYvqlXqvP6/R/T3910scfbByDbQVMCaHnlbLe0Z/IajAXYhhfdewqEzVzsIk8n5K8yq1J3+kE2BEj17K16vtnojUeFulkQQlrB66/RyoDQxhYxFpXl59bHSDFEUcLLijqa+KfDSH+6CyBM9kDpJXvOZHo+h6AsLcJv8l4Y0cJ4fQuoJuyBKYFEKatxTzXQPPLzY9pMR1MSfUrcdbCl2YJr3Kp7jAXKBkZSMa1BtGY2qC+kwUI1qNgUOPECID6gLcjSYRLpTLrz0MwyYxC3KABPsWbLJf6l+MZPFrAWUA1oSaufUuvWhj87Wy1YbRydsV73cwFGuaw==",
    "commit": "5c8abbf"
+  },
+  {
+   "platform": "iOS",
+   "shape": "7c4180d665ee32df8960a77eb7f84082ca19ec9a31915c3ff5c545ded39a65ee",
+   "app": "0.3.2",
+   "version": 20,
+   "file": "ios-0.3.2-20.pck",
+   "sha256": "5c973f87ac3baa70621887e63f55c00c4f12fb5d58e4ffe37ce86fba9ddf32c2",
+   "signature": "tebZPAPlHFU2neSDdlKdBnMYqnATGdu8vXy+t3YBzkCM0H14KqBq3i4oEianz9cD7zBMmJi0qQcYna2zQDS7Ph6puLMH9FH7030/y4e5Rsbf3EQ1DKgVHl1xuBHD+9vDIESf6d16KxFntF0/lrlr0VsQaJpRogELQb2bwzx8WUgCh3NNvm3d7nO38Wxc/60wt6cv4gWMQYPd2ZwnDCWAxh9YWsqmTpxBoUrq8CpEF/WFdA+EGV7jEeRYN1d+DB1ca8vkMG8ufmwBtZl8nptNLKzDsnsFVX0J5sPikO2oCZwsxTk48R5avlyD7aVeQ5lS/ljoCyAoaJKZipTKYzKT/w==",
+   "commit": "d0121d7"
   }
  ]
 }
