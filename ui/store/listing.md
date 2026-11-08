@@ -32,7 +32,7 @@ Pick up what you find on the way:
 • Bubble drops: collect three and they turn into an extra life
 • Golden spyglass: shows exactly where your jump will land, for a few seconds
 
-Reach the last island and the fireworks go off. Put your time on the leaderboard and share it with your friends.
+Reach the last island and the fireworks go off.
 
 Race the clock:
 • Your time runs from the first jump to the last island
